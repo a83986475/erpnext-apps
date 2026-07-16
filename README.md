@@ -1,2 +1,9 @@
-# erpnext-apps
-自定义Apps，扩展erpnext功能。 
+# my_custom_app - ERPNext 中文定制
+
+ERPNext v16 中文定制功能扩展包。提供常用模块的中文翻译和自定义字段。
+
+## 功能
+
+- 中文翻译（覆盖销售、采购、库存、财务、制造等模块）
+- 自定义字段（客户合同管理、供应商审批等）
+- 事件钩子（Sales Invoice 验证等）
