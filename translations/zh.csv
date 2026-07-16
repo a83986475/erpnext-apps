@@ -1,177 +1,217 @@
-"Source","Target"
-# 销售模块
-"Sales Invoice","销售发票"
-"Sales Order","销售订单"
-"Delivery Note","交货单"
-"Quotation","报价单"
-"Customer","客户"
-"Customer Name","客户名称"
-"Overdue","逾期"
-"Pending","待处理"
-"Pending Approval","待审批"
-"Approved","已审批"
-"Rejected","已拒绝"
-"Fully Paid","已全额付款"
-"Partially Paid","部分付款"
-"Unpaid","未付款"
-"Overdue Amount","逾期金额"
-"Outstanding Amount","未结金额"
-"Grand Total","总计"
-"Net Total","净额"
-"Discount Amount","折扣金额"
-
-# 采购模块
-"Purchase Order","采购订单"
-"Purchase Invoice","采购发票"
-"Purchase Receipt","采购收货单"
-"Supplier","供应商"
-"Supplier Name","供应商名称"
-"Material Request","物料需求单"
-"Request for Quotation","询价单"
-"Supplier Quotation","供应商报价"
-
-# 库存模块
-"Item","物料"
-"Item Code","物料编码"
-"Item Name","物料名称"
-"Item Group","物料分组"
-"Warehouse","仓库"
-"Stock Entry","库存入库单"
-"Stock Reconciliation","库存盘点"
-"Material Transfer","物料转移"
-"Material Issue","物料出库"
-"Material Receipt","物料入库"
-"Batch No","批号"
-"Serial No","序列号"
-"Bin","库存余额"
-"Required","需求数量"
-"Available","可用数量"
-"Projected","预计数量"
-"Reserved","预留数量"
-
-# 财务模块
-"Journal Entry","日记账"
-"Payment Entry","付款单"
-"Payment","付款"
-"Receive","收款"
-"Bank Account","银行账户"
-"Cash Account","现金账户"
-"Chart of Accounts","会计科目表"
-"Account","会计科目"
-"Debit","借方"
-"Credit","贷方"
-"Budget","预算"
-"Budget Variance","预算差异"
-"Fiscal Year","财年"
-"Cost Center","成本中心"
-
-# 制造模块
-"Bill of Materials","物料清单"
-"Production Order","生产订单"
-"Work Order","工单"
-"Job Card","作业卡"
-"Workstation","工作站"
-"Operation","工序"
-"Routing","工艺路线"
-"Sub Assembly","子装配件"
-"Phantom Item","虚拟物料"
-
-# CRM模块
-"Lead","潜在客户"
-"Opportunity","商机"
-"Contact","联系人"
-"Address","地址"
-"Email Address","电子邮件"
-"Phone","电话"
-"Mobile No","手机号码"
-"Campaign","营销活动"
-
-# 项目模块
-"Project","项目"
-"Task","任务"
-"Milestone","里程碑"
-"Project Type","项目类型"
-"Timesheet","工时表"
-"Activity Type","活动类型"
-"Activity Cost","活动成本"
-
-# 人事模块
-"Employee","员工"
-"Department","部门"
-"Designation","职务"
-"Leave Application","请假申请"
-"Attendance","考勤"
-"Salary Slip","工资单"
-"Salary Structure","薪资结构"
-"Expense Claim","费用报销"
-"Travel Request","出差申请"
-
-# 支持模块
-"Ticket","工单"
-"Issue","问题"
-"Customer Support","客户支持"
-"SLA","服务级别协议"
-"Priority","优先级"
-
-# 通用
-"Name","名称"
-"Status","状态"
-"Remarks","备注"
-"Reference","参考号"
-"Description","描述"
-"Created By","创建人"
-"Created On","创建日期"
-"Modified By","修改人"
-"Modified On","修改日期"
-"Enabled","已启用"
-"Disabled","已停用"
-"Active","活跃"
-"Inactive","不活跃"
-"Default","默认"
-"Company","公司"
-"Is Active","是否启用"
-"Print Format","打印格式"
-"Email Template","邮件模板"
-"Letter Head","信纸抬头"
-"Terms and Conditions","条款与条件"
-"Shipment Tracking","物流追踪"
-"Valid Till","有效期至"
-"Delivery Date","交货日期"
-"Currency","货币"
-"Exchange Rate","汇率"
-"Tax Template","税费模板"
-"Shipping Rule","运费规则"
-"Payment Terms Template","付款条件模板"
-"Customer Group","客户分组"
-"Territory","销售区域"
-"Cost Allocation","成本分配"
-"Skip Material Transfer","跳过物料转移"
-"Credit Limit","信用额度"
-"Approver","审批人"
-"Approval Date","审批日期"
-"Last Transaction Date","上次交易日期"
-
-# 自定义字段
-"custom_contract_status","合同状态"
-"custom_renewal_date","续约日期"
-"custom_contract_value","合同金额"
-"custom_approval_level","审批级别"
-"custom_department_head","部门主管"
-"custom_project_budget","项目预算"
-"custom_risk_level","风险级别"
-"custom_delivery_terms","交付条款"
-"custom_payment_terms","付款条款"
-
-# 系统提示
-"Amount exceeds approval limit","金额超过审批限额"
-"Please check the input data","请检查输入数据"
-"Operation completed successfully","操作成功完成"
-"Insufficient stock","库存不足"
-"Data saved successfully","数据保存成功"
-"Record submitted","记录已提交"
-"Record cancelled","记录已取消"
-"Please select a valid option","请选择有效选项"
-"This field is required","此字段为必填"
-"No records found","未找到记录"
-"Loading...","加载中..."
-"Search...","搜索..."
+Abbreviation,缩写
+Account,会计科目
+Active,活跃
+Activity Cost,活动成本
+Activity Type,活动类型
+Address,地址
+All Season,四季通用
+Allow Rename Attribute Value,允许重命名属性值
+Amount exceeds approval limit,金额超过审批限额
+Approval Date,审批日期
+Approved,已审批
+Approver,审批人
+Apricot,杏色
+Attendance,考勤
+Attribute Value,属性值
+Attributes,规格属性
+Autumn,秋季
+Available,可用数量
+Bamboo Fiber,竹纤维
+Bank Account,银行账户
+Batch No,批号
+Bill of Materials,物料清单
+Bin,库存余额
+Black,黑色
+Blended,混纺
+Blue,蓝色
+Boys,男童
+Budget,预算
+Budget Variance,预算差异
+Campaign,营销活动
+Cash Account,现金账户
+Chart of Accounts,会计科目表
+Chinese Name,中文名称
+Color,颜色
+Color Swatch,色卡图
+Company,公司
+Contact,联系人
+Copy Fields to Variant,复制字段到变体
+Cost Allocation,成本分配
+Cost Center,成本中心
+Cotton,纯棉
+Cotton Linen,棉麻
+Created By,创建人
+Created On,创建日期
+Credit,贷方
+Credit Limit,信用额度
+Currency,货币
+Customer,客户
+Customer Group,客户分组
+Customer Name,客户名称
+Customer Support,客户支持
+Data saved successfully,数据保存成功
+Debit,借方
+Default,默认
+Delivery Date,交货日期
+Delivery Note,交货单
+Department,部门
+Description,描述
+Designation,职务
+Disabled,已停用
+Discount Amount,折扣金额
+Do Not Update Variants,不更新变体
+Email Address,电子邮件
+Email Template,邮件模板
+Employee,员工
+Enabled,已启用
+Exchange Rate,汇率
+Expense Claim,费用报销
+Fiscal Year,财年
+Fleece,摇粒绒
+From Range,起始范围
+Fully Paid,已全额付款
+Gender,性别
+Girls,女童
+Grand Total,总计
+Gray,灰色
+Green,绿色
+Has Variants,启用多规格
+Inactive,不活跃
+Increment,增量
+Insufficient stock,库存不足
+Is Active,是否启用
+Issue,问题
+Item,物料
+Item Attribute,物料属性
+Item Attribute Value,属性值
+Item Code,物料编码
+Item Group,物料分组
+Item Name,物料名称
+Item Variant Settings,物料变体设置
+Job Card,作业卡
+Journal Entry,日记账
+Khaki,卡其
+Last Transaction Date,上次交易日期
+Lead,潜在客户
+Leave Application,请假申请
+Letter Head,信纸抬头
+Loading...,加载中...
+Main Image,主图
+Material,材质
+Material Issue,物料出库
+Material Receipt,物料入库
+Material Request,物料需求单
+Material Transfer,物料转移
+Milestone,里程碑
+Mobile No,手机号码
+Modal,莫代尔
+Modified By,修改人
+Modified On,修改日期
+Name,名称
+Navy,藏青
+Net Total,净额
+No records found,未找到记录
+Numeric Values,数值属性
+One Size,均码
+Operation,工序
+Operation completed successfully,操作成功完成
+Opportunity,商机
+Outstanding Amount,未结金额
+Overdue,逾期
+Overdue Amount,逾期金额
+POS Short Name,POS收银简称
+Partially Paid,部分付款
+Payment,付款
+Payment Entry,付款单
+Payment Terms Template,付款条件模板
+Pending,待处理
+Pending Approval,待审批
+Phantom Item,虚拟物料
+Phone,电话
+Pink,粉色
+Please check the input data,请检查输入数据
+Please select a valid option,请选择有效选项
+Polyester,涤纶
+Print Format,打印格式
+Priority,优先级
+Production Order,生产订单
+Project,项目
+Project Type,项目类型
+Projected,预计数量
+Purchase Invoice,采购发票
+Purchase Order,采购订单
+Purchase Receipt,采购收货单
+Purple,紫色
+Quotation,报价单
+Receive,收款
+Record cancelled,记录已取消
+Record submitted,记录已提交
+Red,红色
+Reference,参考号
+Rejected,已拒绝
+Remarks,备注
+Request for Quotation,询价单
+Required,需求数量
+Reserved,预留数量
+Routing,工艺路线
+SLA,服务级别协议
+SPU Code,SPU编码
+Salary Slip,工资单
+Salary Structure,薪资结构
+Sales Invoice,销售发票
+Sales Order,销售订单
+Search...,搜索...
+Season,季节
+Serial No,序列号
+Shipment Tracking,物流追踪
+Shipping Rule,运费规则
+Silk,丝绸
+Size,尺码
+Skip Material Transfer,跳过物料转移
+Source,Target
+Spec Summary,规格摘要
+Spring,春季
+Status,状态
+Stock Entry,库存入库单
+Stock Reconciliation,库存盘点
+Sub Assembly,子装配件
+Summer,夏季
+Supplier,供应商
+Supplier Name,供应商名称
+Supplier Quotation,供应商报价
+Task,任务
+Tax Template,税费模板
+Template Item,模板物料
+Terms and Conditions,条款与条件
+Territory,销售区域
+This field is required,此字段为必填
+Ticket,工单
+Timesheet,工时表
+To Range,结束范围
+Travel Request,出差申请
+Unisex,中性
+Unpaid,未付款
+Valid Till,有效期至
+Variant,变体
+Variant Based On,变体依据
+Variant Item,变体物料
+Variant Of,所属模板
+Variants,多规格
+Warehouse,仓库
+White,白色
+Winter,冬季
+Wool,羊毛
+Work Order,工单
+Workstation,工作站
+Yellow,黄色
+custom_approval_level,审批级别
+custom_contract_status,合同状态
+custom_contract_value,合同金额
+custom_delivery_terms,交付条款
+custom_department_head,部门主管
+custom_payment_terms,付款条款
+custom_project_budget,项目预算
+custom_renewal_date,续约日期
+custom_risk_level,风险级别
+{0} is not a template item,{0} 不是模板物料
+Please specify a template item,请指定模板物料
