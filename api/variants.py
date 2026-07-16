@@ -87,11 +87,16 @@ def get_template_stock_summary(template_item, warehouse=None):
         filters["warehouse"] = warehouse
 
     stock_data = {}
-    for d in frappe.get_all(
-        "Bin",
-        filters=filters,
-        fields=["item_code", "warehouse", "actual_qty"],
-    ):
+    try:
+        bins = frappe.get_all(
+            "Bin",
+            filters=filters,
+            fields=["item_code", "warehouse", "actual_qty"],
+        )
+    except frappe.PermissionError:
+        bins = []
+
+    for d in bins:
         key = d.item_code
         if key not in stock_data:
             stock_data[key] = 0
@@ -155,7 +160,11 @@ def search_items_by_spu(spu_code):
     )
 
     if not templates:
-        return None
+        return {
+            "template": None,
+            "variant_count": 0,
+            "variants": [],
+        }
 
     template = templates[0]
     variants = get_template_variants(template.item_code)
