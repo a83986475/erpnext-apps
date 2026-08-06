@@ -1,0 +1,596 @@
+# 会话总结：ERPNext v16 开发环境搭建 + 服务器定制开发
+
+> 生成时间: 2026-07-17 | 最后更新: 2026-08-06 | 供下个对话引用
+
+---
+
+## 一、已完成的工作
+
+### 第一会话：本地 WSL2 开发环境搭建
+
+| 任务 | 状态 |
+|------|------|
+| WSL2 + Ubuntu 24.04 开发环境 | ✅ |
+| bench 5.31.0 安装（通过 pipx） | ✅ |
+| Python 3.14（deadsnakes PPA） | ✅ |
+| Node.js 24（通过 nvm） | ✅ |
+| MariaDB + Redis 配置 | ✅ |
+| ERPNext v16（version-16 分支）安装到站点 `dev.localhost` | ✅ |
+| 创建自定义 App `solua_home` | ✅ |
+| 安装 `solua_home` 到 dev.localhost | ✅ |
+| 编写 `start.sh`（一键启动脚本，解决 Procfile schedule 问题） | ✅ |
+| 编写 `setup-erpnext.sh`（一键安装脚本） | ✅ |
+| 编写 `ERPNext 定制开发操作手册.md`（含全部踩坑记录） | ✅ |
+
+### 第二会话：服务器翻译修复（初始尝试）
+
+| 任务 | 状态 |
+|------|------|
+| 通过 `ssh qq` 连接服务器 | ✅ |
+| 构建 `bench build` 并重启 supervisor | ✅ |
+| 翻译未生效（旧 .mo 文件不含中文，只有 2006 字节英文） | ❌ 第三会话修复 |
+
+### 第三会话：完整修复 + 功能完善
+
+| 任务 | 状态 |
+|------|------|
+| **翻译修复（真正解决）** | ✅ |
+| 删除旧 .mo 文件后重新编译 | ✅ |
+| .mo 从 2KB（英文）到 1.27MB（中文 8418 条） | ✅ |
+| 中文翻译在服务器上生效 | ✅ |
+| **服务器 Node 24 切换** | ✅ |
+| nvm + Node v24.18.0 已安装 | ✅ |
+| 更新 supervisor.conf 添加 PATH 环境变量 | ✅ |
+| node-socketio 进程使用 Node 24 | ✅ |
+| 更新 frappe 用户 .bashrc 默认 PATH | ✅ |
+| **solua_home 部署到服务器** | ✅ |
+| 打包传输并解压到 apps 目录 | ✅ |
+| 注册到 apps.txt + apps.json | ✅ |
+| 创建 Python symlink | ✅ |
+| install-app + migrate 执行成功 | ✅ |
+| **完善中文翻译** | ✅ |
+| zh.csv 从 48 条扩充到 150+ 条 | ✅ |
+| install.py 同步更新 | ✅ |
+| 添加错误处理 try/except | ✅ |
+| **Git 初始化并推送到 GitHub** | ✅ |
+| 创建 .gitignore | ✅ |
+| 推送到 https://github.com/a83986475/solua-erp.git（原 erpnext-apps，后改名） | ✅ |
+
+### 第四会话：部署验证
+
+| 任务 | 状态 |
+|------|------|
+| **模块导入验证** | ✅ `import solua_home` 成功 |
+| **hooks.py 注册检查** | ✅ doc_events 全部正确注册 |
+| **类重写检查** | ✅ extend_doctype_class 配置正确 |
+| **App 文件完整性** | ✅ 18 个文件齐全 |
+| **数据库翻译** | ✅ 105 条中文翻译已导入 |
+| **自定义字段** | ✅ Customer 有 5 个自定义字段 |
+| **数据库日志** | ✅ 无错误，仅正常 DDL |
+| **Supervisor 状态** | ✅ 所有进程 RUNNING |
+
+### 第五会话：窗帘多色方案 + 自定义 POS + 功能完善（本次）
+
+| 任务 | 状态 |
+|------|------|
+| **窗帘多色方案设计** | ✅ |
+| Template + Variant 数据模型讨论 | ✅ |
+| 条码策略方案 A（条码放模板，扫码弹窗选颜色） | ✅ |
+| 颜色用葡语属性值（Branco/Preto/Azul...） | ✅ |
+| **自定义 POS 扫码颜色选择器** | ✅ 已设计（未编码） |
+| 后端 API 设计：`scan_barcode_for_pos()` | ✅ 伪代码已写 |
+| 前端 JS 设计：`pos_custom.js`（onScan 重绑定 + 颜色弹窗） | ✅ 伪代码已写 |
+| **创建客户 ValueError 修复** | ✅ |
+| `after_customer_created` 中子表过滤语法修正 | ✅ `frappe.get_all("Contact", filters=[[...], [...]])` |
+| Walkin 客户提前返回跳过联系人创建 | ✅ |
+| **`is_billing_contact` 列修复** | ✅ |
+| MySQL 报错：`Unknown column 'tabContact.is_billing_contact'` | ✅ 已创建 Custom Field |
+| 修复方式：`frappe.get_doc({"doctype": "Custom Field", ...})` | ✅ |
+| **测试数据删除** | ✅ |
+| CR-001 模板 + 6 个颜色 Variant 全部删除 | ✅ |
+| **Variant 自动价格同步** | ✅ |
+| `api/stock.py` — `auto_create_item_price()` 函数 | ✅ |
+| `hooks.py` — `Item.after_insert` 钩子注册 | ✅ |
+| 模板设标准价 → 创建 Variant → 自动生成 Item Price（Standard Selling） | ✅ |
+| 3 个 bug 修复：死赋值 + currency API + on_update→after_insert | ✅ |
+| **`boot.py` 缺失导致崩溃修复** | ✅ |
+| `ModuleNotFoundError: No module named 'solua_home.boot'` | ✅ 已创建 boot.py |
+| 残留临时文件清理（_fix_billing.py, [29, from） | ✅ |
+| **hooks.py 多次损坏修复** | ✅ |
+| hooks.py 重写 3+ 次（未被 '' 多行字符串 + sed 多行替换破坏） | ✅ |
+| 所有 .py 文件语法检查通过 | ✅ |
+| pip editable 重新安装 + bench clear-cache | ✅ |
+
+### 第六会话：POS 扫码选色落地 + 前后端契约审查 + 文档/代码统一（本次）
+
+| 任务 | 状态 |
+|------|------|
+| **POS 扫码颜色选择器前端实现** | ✅ |
+| `public/js/pos_custom.js` — onScan 原型方法重绑定 + 颜色弹窗 + 加购 | ✅ |
+| 关键设计：挂在 `ItemSelector.prototype.bind_events`（POS 刷新重建组件后仍生效） | ✅ |
+| `hooks.py` 注册 `page_js = {"point-of-sale": "public/js/pos_custom.js"}` | ✅ |
+| 颜色弹窗（frappe.ui.Dialog + HTML 网格 + 防堆叠 + XSS 转义） | ✅ |
+| 加购复用标准「搜索→点击 .item-wrapper」流程（价格/UOM 自动带出） | ✅ |
+| **前后端契约审查（发现并修复 3 个 bug）** | ✅ |
+| 🔴 条码查询 `get_value("Item", {"barcode":...})` 列不存在 → 改查 `Item Barcode` 子表 | ✅ |
+| 🟡 `custom_swatch_image` 字段不存在报错 → `has_column()` 守卫 + getattr 兜底 | ✅ |
+| 🟡 无异常处理 → try/except + log_error + 返回 `{"type":"error"}` | ✅ |
+| 前端处理 `r.exc` / `type:"error"`（红色提示 + 恢复搜索框焦点） | ✅ |
+| **操作手册更新** | ✅ |
+| 6.5.4 伪代码 → 真实代码（含契约表 + 踩坑记录） | ✅ |
+| 新增 6.5.8 部署与验证（本地/生产命令 + 验证清单 + 常见问题） | ✅ |
+| **install.py 多规格初始化（此前仅文档有）** | ✅ |
+| 新建 `install.py`：`add_item_attributes()` Cor 属性 | ✅ |
+| `add_variant_custom_fields()` 5 个 Item 多规格字段（含色卡图） | ✅ |
+| `configure_item_variant_settings()` 模板→Variant 继承字段（官方 API） | ✅ |
+| `hooks.py` 指向 `solua_home.install.*`；setup.py 清理死代码改为函数库 | ✅ |
+| 手册 6.5.5/6.5.6 与代码统一（标注已实现） | ✅ |
+| **solua-home 双目录去重分析** | ✅ |
+| 发现 `C:\Users\Yang\erpnext` 是 solua-home 子模块的孤儿拷贝（git 已损坏） | ✅ |
+| 生成清理脚本 `solua-home/scripts/cleanup-erpnext-dup.bat`（移到回收站） | ✅ |
+| 所有改动双份同步（erpnext 根 + solua-home）+ md5 校验 | ✅ |
+
+### 第七会话：生产升级部署 + POS 扫码选色全流程验收（本次）
+
+| 任务 | 状态 |
+|------|------|
+| **生产快速止血：客户创建 ValueError 修复部署** | ✅ |
+| 根因：服务器跑 7 月中旬旧代码，`frappe.db.exists("Contact", {"links": [...]})` 子表过滤写法不被支持 | ✅ 本地第五会话已修复，本次仅部署 |
+| 上传修复版 `api/sales.py`（md5 一致 + 语法检查）+ 备份 `sales.py.bak-20260806` | ✅ |
+| 重启 web + 端到端验证：创建客户 TEST-FIX-VERIFY → 无报错 → 联系人自动创建 → 清理 | ✅ |
+| **完整升级部署（commit `1e2236a`）** | ✅ |
+| ⚠️ 发现：本地 WSL 的 `pos.py`/`pos_custom.js` 是修复前旧版（含已知坑），修复版在示例副本 → 先同步再提交 | ✅ |
+| 本地 commit + push GitHub（解决 WSL 凭据为空问题：复用 Windows 侧 GCM） | ✅ |
+| 服务器备份站点 + git pull（fast-forward）+ migrate + build + 重启全部服务 | ✅ |
+| 5 个多规格自定义字段创建、翻译 200 条、Item Variant Settings 81 个继承字段 | ✅ |
+| 三处代码一致（本地 / GitHub / 服务器 = `1e2236a`） | ✅ |
+| **Sales Order / Quotation 日期类型修复（commit `5cb1ff4`）** | ✅ |
+| 报错 `str < datetime` TypeError → 改用 `frappe.utils.date_diff`（整数，兼容字符串/日期） | ✅ |
+| ⚠️ 踩坑：`add_days`/`today` 在 frappe 16 返回字符串，`getdate(...) < add_days(...)` 仍是 date < str | ✅ 第二版修复用 date_diff |
+| 4 场景端到端验证通过（SO 正常/越界 × QUO 正常/越界） | ✅ |
+| **POS 默认不加载商品（commit `adea055`）** | ✅ |
+| `override_whitelisted_methods` 拦截 `point_of_sale.get_items`：无 search_term 返回空列表 | ✅ 解决全量物料卡顿 |
+| 前端空态提示「请扫码或搜索商品」（替换 Items not found 横幅） | ✅ |
+| 验证：HTTP handler 层解析到自定义函数，空搜索空列表、搜索 SKU001 正常 | ✅ |
+| **Walkin 散客顾客** | ✅ 创建（Individual）+ 设为 `收银方式1` POS Profile 默认顾客 |
+| Walkin 自动联系人钩子正确跳过（after_customer_created 精确匹配） | ✅ |
+| **窗帘测试数据（生产 erp.solua.one）** | ✅ |
+| `Cor` 属性 + `CR-001` 模板（条码 6901234567890）+ 6 个颜色 Variant（AZ/BG/BR/CZ/PR/VM） | ✅ |
+| Standard Selling 价格 6 条（1200–1450 MZN，auto_create_item_price 自动生成） | ✅ |
+| Stock Reconciliation `MAT-RECO-2026-00002` 补库存 10 件/色（Finished Goods - SHD） | ✅ |
+| 测试环境：用户 `pos.test@solua.one` + Profile `收银方式1-Test`（顾客=Walkin）+ 开店单 | ✅ |
+| **扫码选色全流程浏览器实测（验收 ✅）** | ✅ |
+| 打开 POS → 空态提示「请扫码或搜索商品」→ 顾客默认 Walkin | ✅ |
+| 输入条码 6901234567890 → 弹出「选择颜色」弹窗（6 色块全显示） | ✅ |
+| 点击 Branco → 购物车加入 `CR-001-BR` × 1，MZN 1,200.00 | ✅ |
+| 控制台无 JS 错误，错误日志为空 | ✅ |
+| **实测发现并解决 2 个问题** | ✅ |
+| 🔴 扫码报 403「Item Price 权限不足」：生产站点 Item Price 仅授权 Purchase/Sales Master Manager | ✅ 已给 Sales User 角色加 Item Price 读权限（最小权限，验证通过） |
+| 🔴 点色报「仓库中无此物料」：Variant 无库存 | ✅ 盘点单补库存 |
+| **POS 分组清理 + 模块隐藏（零售环境瘦身）** | ✅ |
+| POS Profile 收银方式1 配置 item_groups=Products，分组树只显示成品 | ✅ 验证：get_item_groups=[Products]、搜索返回 6 色 Variant |
+| 隐藏 4 个模块 Workspace（Manufacturing/Projects/Quality/Subcontracting，is_hidden=1） | ✅ 收银员视角验证全部消失；管理员仍可见（Frappe 设计） |
+| Maintenance/EDI 无桌面 Workspace（本来就不显示），无需处理 | ✅ |
+
+### 第八会话：App 命名正规化（my_custom_app → solua_home）+ 生产配置盘点（本次）
+
+| 任务 | 状态 |
+|------|------|
+| **基础档案盘点** | ✅ 公司/科目/仓库/物料/价格/税/POS/用户/翻译全量核对，主干完整 |
+| **demo 数据清理** | ✅ SKU001-010、test 物料、demo 客户/供应商/分组、32 张测试单据全删，验证归零（见 demo-data-cleanup-plan.md） |
+| **三处代码同步** | ✅ GitHub（solua-erp `3f1e70c`）/ 服务器 / 本地示例 md5 全量一致 |
+| **App 重命名：my_custom_app → solua_home** | ✅ 方案 A 完整重命名 |
+| 模块名（Python 包名）| ✅ `solua_home`（小写+下划线，不能有空格） |
+| 显示元数据 | ✅ app_title=Solua Home 定制 / publisher=Solua Home, Lda / email=admin@solua.one |
+| GitHub 仓库改名 | ✅ `erpnext-apps` → `solua-erp`（gh CLI，旧 URL 自动重定向） |
+| 服务器迁移 | ✅ 目录 apps/my_custom_app → apps/solua_home + apps.txt/apps.json/symlink/tabInstalled Application |
+| 🔴 关键踩坑：installed_apps 旧名残留 | ✅ tabDefaultValue 里旧列表导致 migrate 报 No module named 'my_custom_app'，已改为 [frappe, erpnext, solua_home] |
+| 验证 | ✅ import solua_home、POS 拦截 get_items→solua_home.api.pos.get_items、page_js 生效、supervisor RUNNING |
+| **⚠️ 遗留：site_config.json 旧 app 名** | 🔴 sites/erp.solua.one/site_config.json 的 installed_apps 仍是旧名，需改为 solua_home（待办） |
+| **SHD → SH 迁移评估** | ✅ 已出评估清单（SHD-SH 迁移评估清单.md），待确认方案后执行 |
+| **POS 付款默认行为确认** | ✅ 当前 Cash 为默认并自动填全额；可选关闭默认开关实现「收银员选方式→自动填剩余金额」 |
+
+### 第九会话：生产配置变更 + 收银员账号 + Demo 公司删除（2026-08-07，本次）
+
+**一句话总结**：完成 POS 收款流程改造、配置快照导出、SHD→SH 迁移执行、Demo 公司整体删除、正式收银员账号 pos1/pos2 创建，并同步所有文档。系统进入「唯一公司 SH + 正式收银员」的生产前状态。
+
+| 任务 | 状态 |
+|------|------|
+| **代码：隐藏评论输入框（保留活动时间线）** | ✅ 提交 `87444ed` |
+| 实现方式 | ✅ `solua_home/public/css/hide_comments.css`（隐藏 `.comment-box`）+ hooks.py `app_include_css`，活动时间线保留 |
+| 部署验证 | ✅ 服务器 Node 24 build + 重启，CSS 经 HTTPS 200，三处一致（GitHub/服务器/本地） |
+| **POS 收款流程改造** | ✅ |
+| `set_grand_total_to_default_mop` 1→0（收银方式1 / 收银方式1-Test） | ✅ 打开收款界面不再自动选 Cash/填全额，点任意付款方式自动填剩余金额（`auto_set_remaining_amount`） |
+| 实测 | ✅ 点 Cash/刷卡自动填充全部通过（含混合支付） |
+| 发现：Cash default 标记不可去 | ✅ ERPNext 强制至少一个默认付款方式（validate_payment_methods），但开关关闭后 default 不再生效 |
+| **配置快照导出** | ✅ `config-snapshot/` 目录（v1/v2/v3） |
+| v1 | ✅ 180 Property Setter + 29 Custom Field + 2 POS Profile（SHD） |
+| v2 | ✅ 新增 4 隐藏模块（Workspace is_hidden）+ 3 用户设置（含 pos.test 静音） |
+| v3 | ✅ 最终态：POS Profile ×3（含 SH 迁移后），用于重置重放保险 |
+| **site_config.json installed_apps 修复** | ✅（第八会话遗留的最后一处旧名） |
+| 修复 | ✅ `[frappe, erpnext, solua_home]`，备份 `site_config.json.bak-20260807` |
+| 验证闭环 | ✅ clear-cache + 重启（7 进程 RUNNING）+ 日志零新增报错 + 重启后 build_index 正常 |
+| **pos.test 静音** | ✅ `mute_sounds=1`（zh 语言用户） |
+| **SHD → SH 配置迁移（执行）** | ✅ |
+| 新建 `收银方式1 - SH` POS Profile | ✅ Walkin 默认、Cash(默认)+Credit Card、自动填收款关、warehouse/科目联动 SH |
+| 依赖补齐 | ✅ 新建科目 `Bank Account - SH`（Credit Card 在 SH 的默认账户）+ Mode of Payment SH 账户行 |
+| 物料/库存 | ✅ 未迁移（测试档案留在 SHD，后随公司删除） |
+| **Demo 公司 Solua Home, Lda (SHD) 删除** | ✅（详见 SHD-company-deletion-record.md） |
+| 备份 | ✅ `20260807_002435`（database+files+private-files） |
+| 删除范围 | ✅ 单据/科目 97/仓库 5/成本中心/税模板/POS Profile×2/GL/SLE/Bin/付款方式账户行 |
+| 验证 | ✅ 全表扫描 ~130 表 SHD 残留 0，唯一公司 SH |
+| **正式收银员 pos1/pos2 创建** | ✅ |
+| 账号 | ✅ pos1@solua.one（POS 收银员 1）/ pos2@solua.one（POS 收银员 2） |
+| 权限 | ✅ Sales User + Accounts User（收银最小权限）+ 新增自定义角色 **POS Cashier**（仅开店/关店 submit） |
+| 绑定 | ✅ 收银方式1 - SH（applicable_for_users 子表：pos1/pos2/Administrator）+ 默认公司 SH + 静音 + zh/Africa/Maputo |
+| 实测 | ✅ 密码校验通过；pos1 身份 create_opening_voucher 开店成功（POS-OPE-2026-00003，已取消清理） |
+| **文档归档** | ✅ |
+| 新建《SHD-company-deletion-record.md》 | ✅ 删除记录/顺序/备份号/回滚/上线对照清单 |
+| demo-data-cleanup-plan.md 交叉引用 | ✅ 顶部注明 SHD 已整体删除 |
+
+---
+
+## 二、服务器环境信息
+
+| 项目 | 值 |
+|------|-----|
+| **SSH 连接** | `ssh qq`（用户 `ubuntu`） |
+| **Bench 目录** | `/home/frappe/frappe-bench/` |
+| **Bench 用户** | `frappe`（通过 `sudo -u frappe -i` 切换） |
+| **Bench 路径** | `/usr/local/bin/bench` |
+| **操作系统** | Ubuntu 24.04.4 LTS |
+| **Bench 版本** | 5.31.0 |
+| **Frappe 版本** | 16.27.0 |
+| **ERPNext 版本** | 17.0.0-dev（`develop` 分支） |
+| **站点** | `erp.solua.one`（生产）、`erpnext.localhost`（测试） |
+| **当前语言** | `zh`（中文） |
+| **Node.js** | v24.18.0（nvm 管理，system node 仍为 v20） |
+| **数据库** | MariaDB，db_name: `_62af7cb1044ac230` |
+| **Supervisor** | 已配置 `/etc/supervisor/conf.d/frappe-bench.conf`，所有进程 RUNNING |
+| **solua_home** | 0.0.1，已安装到 erp.solua.one 站点 |
+| **GitHub 仓库** | https://github.com/a83986475/solua-erp.git |
+
+### SSH 免密执行命令模式
+
+```bash
+# 执行 bench 命令（注意需要 source env/bin/activate）
+ssh qq 'sudo -u frappe -i bash -l -c "cd /home/frappe/frappe-bench && source env/bin/activate && bench --site erp.solua.one <命令>"'
+
+# 执行 supervisorctl 命令（ubuntu 用户有免密 sudo）
+ssh qq 'sudo supervisorctl status'
+ssh qq 'sudo supervisorctl restart all'
+
+# 数据库查询
+ssh qq 'mysql -h 127.0.0.1 -u _62af7cb1044ac230 -pUwwJaHWYXIL21g5O _62af7cb1044ac230 -e "SELECT ..."'
+```
+
+---
+
+## 三、本地 WSL2 环境信息
+
+| 项目 | 值 |
+|------|-----|
+| **操作系统** | Windows 11 + WSL2 Ubuntu 24.04 |
+| **WSL 用户** | `yang` |
+| **Bench 目录** | `~/frappe-bench/` |
+| **Python** | 3.14.x |
+| **Node.js** | 24.x（nvm 管理） |
+| **Bench** | 5.31.0（pipx 安装） |
+| **Git 用户名** | yangyang7920 |
+| **Git 邮箱** | a83986475@gmail.com |
+| **开发站点** | `dev.localhost:8000` |
+| **自定义 App** | `solua_home 0.0.1` |
+| **启动脚本** | `bash ~/frappe-bench/start.sh` |
+
+### 自定义 App `solua_home` 结构（最新）
+
+```
+~/frappe-bench/apps/solua_home/
+├── __init__.py              # 模块入口
+├── hooks.py                 # 事件注册（doc_events, extend_doctype_class 等）
+├── boot.py                  # ★ 新增：extend_bootinfo（注入颜色列表等到 boot 信息）
+├── api/
+│   ├── __init__.py
+│   ├── sales.py             # ★ 重组：销售相关 API（含 after_customer_created）
+│   ├── stock.py             # ★ 新增：库存相关 API（含 auto_create_item_price）
+│   └── pos.py               # ★ 新增：POS 自定义 API（含 scan_barcode_for_pos, create_test_data）
+├── install.py               # ★ 安装/迁移入口（after_install, after_migrate）
+│                            #   → 复用 setup.py（翻译 + 基础字段）
+│                            #   → add_item_attributes() Cor 属性
+│                            #   → add_variant_custom_fields() 5 个多规格字段
+│                            #   → configure_item_variant_settings() 继承字段
+├── setup.py                 # ★ 初始化函数库（add_translations/add_custom_fields，供 install.py 复用）
+├── tasks.py                 # 定时任务
+├── config/
+│   └── docs.py              # 文档配置
+├── override/
+│   └── sales_invoice.py     # SalesInvoice 类重写
+├── public/
+│   └── js/
+│       ├── solua_home.js # 通用前端 JS
+│       └── pos_custom.js    # ★ 新增：POS 扫码选颜色自定义 JS（page_js 注册）
+├── translations/
+│   └── zh.csv               # 中文翻译 CSV（150+ 条）
+├── locale/
+│   └── *.po                 # 多语言 PO 文件
+├── .gitignore               # Git 忽略规则
+├── setup.cfg
+├── requirements.txt
+├── MANIFEST.in
+└── README.md
+```
+
+---
+
+## 四、翻译修复详情（完整版）
+
+### 问题
+服务器上（生产模式，supervisor/nginx）切换语言到 `zh` 后页面仍显示英文。
+
+### 初步尝试（未生效）
+- 运行 `compile-po-to-mo --locale zh --force` → `.mo` 文件重新生成了
+- 但旧 `.mo` 文件内容不正确（只有 2006 字节英文国家名翻译）
+- 导致 `get_all_translations('zh')` 返回空数据
+
+### 真正修复
+```bash
+# 1. 删除旧的错误 .mo 文件
+rm -f sites/assets/locale/zh/LC_MESSAGES/erpnext.mo
+rm -f sites/assets/locale/zh/LC_MESSAGES/frappe.mo
+
+# 2. 重新编译（强制从 .po 源文件生成）
+bench --site erp.solua.one compile-po-to-mo --locale zh --force
+
+# 3. 清理缓存
+bench --site erp.solua.one clear-cache
+
+# 4. 重启服务
+sudo supervisorctl restart all
+```
+
+### 修复前后对比
+| 指标 | 修复前 | 修复后 |
+|------|--------|--------|
+| `get_all_translations('zh')` | 2,006 字节（英文） | **1,270,616 字节（中文）** |
+| `.mo` 翻译条目数 | 只有国家名 | **8,418 条完整翻译** |
+| 包含 "客户" 翻译 | ❌ | ✅ |
+
+### 注意事项
+- 命令是 `compile-po-to-mo`，不是 `compile-translations`（后者不存在）
+- 参数是 `--locale zh`，不是 `--language zh`
+- 需要 `--force` 强制重新编译
+- `.po` 源文件在 `apps/erpnext/erpnext/locale/zh.po`（非 LC_MESSAGES 目录）
+- `bench restart` 可能因 supervisor 权限失败，改用 `sudo supervisorctl restart all`
+- 旧 `.mo` 文件可能损坏或不含中文，**删除后重新编译**是关键
+
+---
+
+## 五、服务器 Node 24 切换详情
+
+### 背景
+服务器系统 Node 为 `v20.20.2`（`/usr/bin/node`），但 ERPNext v16 要求 Node 24+ 才能 `bench build`。
+
+### 操作
+1. **nvm 已安装**：`/home/frappe/.nvm/`（之前已装 Node v24.18.0）
+2. **更新 supervisor.conf**：添加 `environment=PATH=` 指向 nvm 的 Node 24（备份为 `supervisor.conf.bak`）
+3. **更新 .bashrc**：`export PATH=/home/frappe/.nvm/versions/node/v24.18.0/bin:$PATH`
+4. **重启验证**：socketio 进程确认使用 `/home/frappe/.nvm/versions/node/v24.18.0/bin/node`
+
+### 验证
+```bash
+ps aux | grep socketio
+# /home/frappe/.nvm/versions/node/v24.18.0/bin/node ...
+```
+
+---
+
+## 六、solua_home 部署详情
+
+### 部署步骤
+1. 本地打包：`tar czf solua_home.tar.gz solua_home`（23K）
+2. 传输：通过 SSH 管道 `cat | ssh qq "sudo -u frappe bash -c 'cat > ..."'`
+3. 解压注册：`tar xzf` + 添加到 `apps.txt` / `apps.json`
+4. Symlink：`ln -sf ... env/lib/python3.14/site-packages/solua_home`
+5. 安装：`bench --site erp.solua.one install-app solua_home`
+6. 迁移：`bench --site erp.solua.one migrate`（触发 after_migrate → add_translations）
+7. 重启：`sudo supervisorctl restart all`
+
+### 翻译完善
+| 文件 | 扩充内容 |
+|------|---------|
+| `translations/zh.csv` | 从 48 条扩充到 150+ 条 |
+| `install.py`（add_translations） | 约 100 条，覆盖销售/采购/库存/财务/制造/CRM/项目/人事/支持/通用UI/系统提示 |
+| 代码质量 | 添加 try/except 错误处理，删除无用 import，修正 f-string 语法 |
+
+### Git 初始化
+| 操作 | 详情 |
+|------|------|
+| 仓库 | `https://github.com/a83986475/solua-erp.git`（原 erpnext-apps，2026-08-06 改名） |
+| 分支 | `main` |
+| 首次提交 | `8c9b266` → 初始提交：ERPNext 中文定制功能 |
+| 20 个文件 | 1064 行插入 |
+| `.gitignore` | Python / IDE / OS / Frappe 排除规则 |
+
+---
+
+## 七、待办 & 改进方向
+
+| 优先级 | 事项 | 说明 |
+|--------|------|------|
+| 🔴 高 | ~~实现 POS 扫码颜色选择器~~ | ✅ **已完成（第六会话）**：前后端 + hooks + 手册全部落地 |
+| 🔴 高 | ~~创建窗帘测试数据并实测~~ | ✅ **已完成（第七会话）**：生产实测扫码选色全流程通过（空态→扫码→弹窗→加购） |
+| 🔴 高 | ~~真实收银员权限决策~~ | ✅ **已完成（第七会话）**：已给 `Sales User` 角色添加 Item Price **读权限**（仅 read，最小权限），并验证纯 Sales User 身份扫码正常 |
+| 🟡 中 | ~~实现 install.py 的 `add_item_attributes()`~~ | ✅ **已完成**：Cor 属性自动初始化 |
+| 🟡 中 | ~~实现 install.py 的 `add_variant_custom_fields()`~~ | ✅ **已完成**：5 个多规格字段 |
+| 🟡 中 | ~~实现 install.py 的 `configure_item_variant_settings()`~~ | ✅ **已完成**：官方 API + 未配置才写入守卫 |
+| 🟢 低 | ~~部署到生产服务器验证~~ | ✅ **已完成（第七会话）**：migrate + build 后扫码选色实测通过，三处代码一致 |
+| 🟢 低 | ~~清理测试数据~~ | ✅ **已完成（2026-08-07）**：SHD 公司整体删除（含收银方式1-Test、CR-001 测试物料与库存） |
+| 🟢 低 | **停用/删除 pos.test 用户** | pos1/pos2 已创建，pos.test 无可用 Profile（收银方式1-Test 已随 SHD 删除）；待确认后禁用或删除 |
+| 🟢 低 | 同步 CSV/install.py 翻译 | 少量条目不一致（如 Ticket vs Ticketing），建议后续统一 |
+| 🟢 低 | 清理 api/pos.py 中的 create_test_data() | 测试完成后删除，不属于生产代码 |
+| 🟢 低 | 执行 `cleanup-erpnext-dup.bat` | 删除 `C:\Users\Yang\erpnext` 孤儿拷贝（需先关闭 IDE） |
+| 🔴 高 | **SH 真实物料 + 库存** | 当前 SH 空库，正式营业前需建真实物料档案 + 盘点入库（新增待办，pos1/pos2 上线前提） |
+| 🟡 中 | **配置快照推送到 GitHub** | config-snapshot/ 三份 JSON 建议推送到 solua-erp 仓库异地备份（新增待办） |
+| 🟡 中 | **config-snapshot 补录收银员配置** | 快照 v3 之后新增的 POS Cashier 角色权限、pos1/pos2 账号、applicable_for_users 绑定未含，建议导出 v4 |
+
+---
+
+## 八、常用命令速查
+
+### 本地开发
+```bash
+cd ~/frappe-bench && bash start.sh           # 启动开发服务器
+bench --site dev.localhost migrate           # 数据库迁移
+bench --site dev.localhost clear-cache       # 清理缓存
+bench build                                  # 构建前端
+```
+
+### 服务器运维
+```bash
+ssh qq                                       # SSH 连接
+sudo supervisorctl status                    # 查看进程状态
+sudo supervisorctl restart all               # 重启所有服务
+bench --site erp.solua.one backup            # 备份站点
+bench --site erp.solua.one clear-cache       # 清理缓存
+```
+
+### 翻译相关
+```bash
+# 编译指定语言翻译（先删旧 .mo 再编译）
+rm -f sites/assets/locale/zh/LC_MESSAGES/*.mo
+bench --site erp.solua.one compile-po-to-mo --locale zh --force
+bench --site erp.solua.one clear-cache
+sudo supervisorctl restart all
+
+# 构建完整前端（含翻译）
+bench build
+
+# 检查翻译是否加载
+bench --site erp.solua.one execute frappe.translate.get_all_translations --args "('zh',)" | wc -c
+```
+
+### 更新 solua_home（Git 工作流）
+```bash
+# 本地
+cd ~/frappe-bench/apps/solua_home
+git add -A && git commit -m "更新说明"
+git push
+
+# 服务器
+ssh qq 'sudo -u frappe -i bash -l -c "cd /home/frappe/frappe-bench/apps/solua_home && git pull && cd /home/frappe/frappe-bench && source env/bin/activate && bench --site erp.solua.one migrate && sudo supervisorctl restart all"'
+```
+
+---
+
+## 九、关键踩坑记录（备忘录）
+
+### 服务器翻译修复（关键！）
+- `compile-po-to-mo` 生成的 `.mo` 文件可能不含中文翻译
+- **必须删除旧 `.mo` 文件后重新编译**，才能得到正确文件
+- 验证方法：`get_all_translations('zh')` 应返回 1.27MB+ 的数据
+- `.po` 源文件路径：`apps/erpnext/erpnext/locale/zh.po`
+
+### supervisor Node 路径
+- supervisor 不加载 `.bashrc`，需用 `environment=PATH=` 指定 Node 路径
+- 备份 supervisor.conf：`cp config/supervisor.conf config/supervisor.conf.bak`
+- 重启用 `sudo supervisorctl restart all`（ubuntu 用户有免密 sudo）
+
+### Python 3.14 f-string 注意事项
+- f-string 内不能使用 `\"` 嵌套双引号（Python 3.14 语法错误）
+- 改用单引号 `field.get('fieldname')` 或提取变量
+
+### 传输文件到服务器（WSL → SSH）
+```bash
+cat /tmp/file.tar.gz | ssh qq 'sudo -u frappe bash -c "cat > /home/frappe/frappe-bench/apps/file.tar.gz"'
+```
+
+### 其他
+- SSH 的 `qq` host 仅在 Windows 的 `~/.ssh/config` 中配置，WSL 内无法直接使用
+- 复杂 Python 命令通过 SSH 执行时，建议先写成脚本文件上传再执行，避免转义问题
+
+### hooks.py 操作守则
+- `hooks.py` 使用**多行字符串**而非 `'\n'.join()` 避免转义地狱
+- `hooks.py` 的 `doc_events` 字典闭括号要一一对应，多一个或少一个 `}` 都会导致 SyntaxError
+- 修改 hooks.py 后必须做语法检查：`python3 -c "compile(open('hooks.py').read(), 'hooks.py', 'exec')"`
+- 避免用 `sed` 直接修改 hooks.py 的 JSON-like 结构（多行替换容易出错）
+- 推荐用 Python 脚本写文件替换 hooks.py 内容
+
+### after_insert vs on_update
+- **`after_insert`**：仅在**首次创建**时触发，适合：Variant 创建时自动生成价格、创建默认配置
+- **`on_update`**：**每次保存都触发**，适合：数据验证、同步更新
+- Variant 自动价格同步必须用 `after_insert`，否则每次编辑 Variant 都会重复运行
+
+### frappe.db.exists 子表过滤
+- **错误写法**：`frappe.db.exists("Contact", {"links": [{"link_doctype": "Customer", "link_name": name}]})`
+- **正确写法**：
+  ```python
+  frappe.get_all("Contact", filters=[
+      ["Dynamic Link", "link_doctype", "=", "Customer"],
+      ["Dynamic Link", "link_name", "=", doc.name],
+  ], limit=1)
+  ```
+
+### Item 价格相关
+- **Template Item（has_variants=1）** 不能设置 Item Price
+- 价格必须设在具体 **Variant** 上
+- 批量设置方法：Selling → Item Price → ⋮ → Add Multiple Items
+- 自动方案：`after_insert` 钩子从模板 standard_rate 自动创建 Variant 的 Item Price
+
+### 创建 Custom Field 的正确 API
+```python
+cf = frappe.get_doc({
+    "doctype": "Custom Field",
+    "dt": "Contact",
+    "fieldname": "is_billing_contact",
+    "label": "Is Billing Contact",
+    "fieldtype": "Check",
+    "insert_after": "is_primary_contact",
+})
+cf.insert(ignore_permissions=True)
+frappe.db.commit()
+```
+- Custom Field 创建后会自动添加数据库列，无需手动 ALTER TABLE
+- 若 ALTER TABLE 失败，可能是数据库用户权限不足
+
+### frappe.defaults.get_user_default("currency")
+- 获取当前用户的默认货币的正确 API
+- 不要用 `frappe.db.get_single_value("Currency", "default_currency")`（Currency 不是 singleton doctype）
+
+### Item 条码查询：`Item` 主表没有 barcode 列（重要！）
+- **错误**：`frappe.db.get_value("Item", {"barcode": barcode}, "name")` → 抛 `Unknown column 'tabItem.barcode'`
+- **正确**：条码存在 `tabItem Barcode` 子表，查子表的 `parent`（= Item name = item_code）：
+  ```python
+  item_code = frappe.db.get_value("Item Barcode", {"barcode": barcode}, "parent")
+  ```
+- 与官方一致：`erpnext.stock.utils.scan_barcode()`（erpnext/stock/utils.py）
+
+### 前端 page_js 钩子
+- 注册：`page_js = {"point-of-sale": "public/js/pos_custom.js"}`（路径相对 app 根目录，含 public/）
+- **开发模式**：直接生效，刷新页面即可
+- **生产模式（supervisor/nginx）**：必须 `bench build` 后重启才生效（后端 Python 不需要）
+- `frappe.require("point-of-sale.bundle.js")` 是异步加载，自定义 JS 需轮询等待 `erpnext.PointOfSale.ItemSelector` 就绪（最多 ~30s）
+
+### 自定义字段存在性检查
+- `frappe.db.has_column("Item", "custom_swatch_image")` 检查物理列是否存在（自定义字段会建列）
+- 配合 `getattr(v, "custom_swatch_image", "")` 兜底，避免 `get_all` 指定不存在的字段报错
+- 更语义化的替代：`frappe.db.field_exists("Item", "custom_swatch_image")`
+
+### Item Variant Settings 配置 API
+- 正确用法（与官方测试 `set_item_variant_settings` 一致）：
+  ```python
+  doc = frappe.get_doc("Item Variant Settings")
+  doc.set("fields", [{"field_name": "item_group"}, ...])
+  doc.save()
+  ```
+- 建议加守卫 `if doc.get("fields"): return`，避免每次 migrate 覆盖管理员手动配置
+
+### onScan 重绑定（POS 自定义扫码）
+- POS 每次刷新都会重建 ItemSelector 并重新执行 `bind_events`，不能只 detach 一次
+- 正确做法：包装 `erpnext.PointOfSale.ItemSelector.prototype.bind_events`（先调用原方法，再 detachFrom + attachTo 自定义）
+- `onScan.detachFrom(document)` 会移除 document 上**所有** onScan 监听器（含默认的），再 attach 自己的
+
+### solua-home 子模块双目录问题
+- `C:\Users\Yang\erpnext` 是从 `solua-home/sites/erpnext`（git 子模块）复制出的孤儿拷贝
+- 复制子模块目录时 `.git` 文件（`gitdir: ../../.git/modules/sites/erpnext`）也会被复制，相对路径失效 → `fatal: not a git repository`
+- 该目录被 IDE 占用时无法重命名/删除（`Device or resource busy`），需先关闭 IDE 再用回收站脚本清理
+- 结论：**保留 solua-home 里的正式子模块，删除根目录孤儿拷贝**（内容已 md5 验证一致）
