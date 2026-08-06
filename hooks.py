@@ -66,7 +66,9 @@ extend_doctype_class = {
     "Sales Invoice": "my_custom_app.override.sales_invoice.CustomSalesInvoice",
 }
 
-override_whitelisted_methods = {}
+override_whitelisted_methods = {
+    "erpnext.selling.page.point_of_sale.point_of_sale.get_items": "my_custom_app.api.pos.get_items",
+}
 
 # ------------------- 安装/迁移 -------------------
 after_install = "my_custom_app.install.after_install"

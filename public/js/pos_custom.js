@@ -235,7 +235,26 @@ frappe.provide("my_custom_app.pos");
 			});
 		};
 
-		// 极端时序兜底：如果组件在脚本加载前已构建完成，立即对当前实例生效
+				// 初始不加载商品列表（后端 get_items 无搜索词返回空），未搜索时显示扫码提示
+		const original_set_items_not_found_banner =
+			erpnext.PointOfSale.ItemSelector.prototype.set_items_not_found_banner;
+		erpnext.PointOfSale.ItemSelector.prototype.set_items_not_found_banner = function () {
+			const searching =
+				this.search_field && this.search_field.get_value && this.search_field.get_value();
+			if (searching) {
+				return original_set_items_not_found_banner.call(this);
+			}
+			this.$items_container.removeClass(this.item_display_class);
+			this.$items_container.addClass("items-not-found");
+			this.$items_container.html(
+				`<div style="text-align:center;padding:48px 16px;color:var(--text-muted);">
+					<div style="font-size:1.1rem;font-weight:600;margin-bottom:6px;">${__("请扫码或搜索商品")}</div>
+					<div style="font-size:0.85rem;">${__("扫描条码或输入商品名称/编码")}</div>
+				</div>`
+			);
+		};
+
+// 极端时序兜底：如果组件在脚本加载前已构建完成，立即对当前实例生效
 		if (window.cur_pos && window.cur_pos.item_selector && window.onScan) {
 			window.onScan.detachFrom(document);
 			window.onScan.attachTo(document, {

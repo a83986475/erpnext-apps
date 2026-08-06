@@ -171,3 +171,15 @@ def fix_is_billing_contact():
     doc.insert(ignore_permissions=True)
     frappe.db.commit()
     print("Created:", fieldname)
+
+
+
+@frappe.whitelist()
+def get_items(start, page_length, price_list, item_group, pos_profile, search_term=''):
+    """POS 商品加载：默认不返回商品（扫码/搜索才加载），避免全量物料导致卡顿"""
+    if not search_term:
+        return {"items": []}
+
+    from erpnext.selling.page.point_of_sale import point_of_sale as pos_page
+
+    return pos_page.get_items(start, page_length, price_list, item_group, pos_profile, search_term)
