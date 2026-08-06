@@ -28,3 +28,7 @@ config/
 
 # Git
 *.orig
+
+# Server-local artifacts (do not track)
+my_custom_app
+api/*.bak*
