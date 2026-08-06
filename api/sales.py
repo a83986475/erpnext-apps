@@ -50,23 +50,23 @@ def on_invoice_cancelled(doc, method=None):
 
 def validate_sales_order(doc, method=None):
     """销售订单保存时验证"""
-    # 示例：检查交货日期
+    # 示例：检查交货日期（至少在当前日期3天后，兼容字符串/日期类型）
     if doc.delivery_date:
-        from datetime import datetime, timedelta
+        from frappe.utils import add_days, getdate, today
 
-        min_date = datetime.now() + timedelta(days=3)
-        if doc.delivery_date < min_date:
+        min_date = add_days(today(), 3)
+        if getdate(doc.delivery_date) < min_date:
             frappe.throw(_("交货日期必须至少在当前日期3天后"))
 
 
 def validate_quotation(doc, method=None):
     """报价单验证"""
-    # 示例：报价有效期不能超过30天
-    if doc.valid_till:
-        from datetime import datetime, timedelta
+    # 示例：报价有效期不能超过30天（兼容字符串/日期类型）
+    if doc.valid_till and doc.transaction_date:
+        from frappe.utils import add_days, getdate
 
-        max_valid = doc.transaction_date + timedelta(days=30)
-        if doc.valid_till > max_valid:
+        max_valid = add_days(getdate(doc.transaction_date), 30)
+        if getdate(doc.valid_till) > max_valid:
             frappe.throw(_("报价有效期不能超过30天"))
 
 
