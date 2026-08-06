@@ -223,69 +223,10 @@ def add_custom_fields():
 
 
 def add_item_attributes():
-    """初始化儿童服装常用的 Item Attribute（颜色、尺码、材质）"""
-    attributes = {
-        "Color": {
-            "values": [
-                ("红色", "RD"),
-                ("蓝色", "BL"),
-                ("粉色", "PK"),
-                ("白色", "WH"),
-                ("黑色", "BK"),
-                ("黄色", "YE"),
-                ("绿色", "GR"),
-                ("紫色", "PU"),
-                ("灰色", "GY"),
-                ("卡其", "KH"),
-                ("杏色", "AP"),
-                ("藏青", "NV"),
-            ],
-        },
-        "Size": {
-            "values": [
-                ("90cm", "90"),
-                ("100cm", "100"),
-                ("110cm", "110"),
-                ("120cm", "120"),
-                ("130cm", "130"),
-                ("140cm", "140"),
-                ("150cm", "150"),
-                ("160cm", "160"),
-                ("均码", "OS"),
-            ],
-        },
-        "Material": {
-            "values": [
-                ("纯棉", "CT"),
-                ("棉麻", "CL"),
-                ("丝绸", "SK"),
-                ("涤纶", "PL"),
-                ("羊毛", "WL"),
-                ("混纺", "BL"),
-                ("莫代尔", "MD"),
-                ("竹纤维", "BF"),
-                ("摇粒绒", "FF"),
-            ],
-        },
-        "Season": {
-            "values": [
-                ("春季", "SP"),
-                ("夏季", "SU"),
-                ("秋季", "FA"),
-                ("冬季", "WI"),
-                ("四季通用", "AL"),
-            ],
-        },
-        "Gender": {
-            "values": [
-                ("男童", "BOY"),
-                ("女童", "GRL"),
-                ("中性", "UNI"),
-            ],
-        },
-    }
+    """初始化 Item Attribute 框架（不含预填值，由用户自行添加属性值）"""
+    attribute_names = ["Color", "Size", "Material", "Season", "Gender"]
 
-    for attr_name, attr_data in attributes.items():
+    for attr_name in attribute_names:
         try:
             if frappe.db.exists("Item Attribute", attr_name):
                 continue
@@ -294,13 +235,6 @@ def add_item_attributes():
                 "doctype": "Item Attribute",
                 "attribute_name": attr_name,
                 "numeric_values": 0,
-                "item_attribute_values": [
-                    {
-                        "attribute_value": value,
-                        "abbr": abbr,
-                    }
-                    for value, abbr in attr_data["values"]
-                ],
             })
             doc.insert(ignore_permissions=True)
         except Exception as e:
@@ -369,23 +303,9 @@ def add_variant_custom_fields():
     frappe.db.commit()
 
 
-def fix_existing_attributes():
-    """修复已创建的 Item Attribute（将英文值更新为中文）"""
+def clear_prefilled_attributes():
+    """清除服务器上已预填的属性值（改为空框架）"""
     import frappe
-
-    value_map = {
-        "Red": "红色", "Blue": "蓝色", "Pink": "粉色",
-        "White": "白色", "Black": "黑色", "Yellow": "黄色",
-        "Green": "绿色", "Purple": "紫色", "Gray": "灰色",
-        "Khaki": "卡其", "Apricot": "杏色", "Navy": "藏青",
-        "One Size": "均码",
-        "Cotton": "纯棉", "Cotton Linen": "棉麻", "Silk": "丝绸",
-        "Polyester": "涤纶", "Wool": "羊毛", "Blended": "混纺",
-        "Modal": "莫代尔", "Bamboo Fiber": "竹纤维", "Fleece": "摇粒绒",
-        "Spring": "春季", "Summer": "夏季", "Autumn": "秋季",
-        "Winter": "冬季", "All Season": "四季通用",
-        "Boys": "男童", "Girls": "女童", "Unisex": "中性",
-    }
 
     for attr_name in ["Color", "Size", "Material", "Season", "Gender"]:
         try:
@@ -393,23 +313,17 @@ def fix_existing_attributes():
                 continue
 
             attr = frappe.get_doc("Item Attribute", attr_name)
-            changed = False
-
-            for row in attr.item_attribute_values:
-                if row.attribute_value in value_map:
-                    row.attribute_value = value_map[row.attribute_value]
-                    changed = True
-
-            if changed:
+            if attr.item_attribute_values:
+                attr.item_attribute_values = []
                 attr.save(ignore_permissions=True)
-                print(f"  ✓ {attr_name}: attributes updated to Chinese")
+                print(f"  ✓ {attr_name}: values cleared")
             else:
-                print(f"  - {attr_name}: already up to date")
+                print(f"  - {attr_name}: already empty")
         except Exception as e:
             print(f"  ✗ {attr_name}: error - {e}")
 
     frappe.db.commit()
-    print("Done: existing attributes fixed")
+    print("Done: all attribute values cleared")
 
 def configure_item_variant_settings():
     """配置 Item Variant Settings（复制字段到变体）"""

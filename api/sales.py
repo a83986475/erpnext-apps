@@ -88,8 +88,19 @@ def validate_customer(doc, method=None):
 
 def after_customer_created(doc, method=None):
     """客户创建后自动操作"""
-    # 示例：自动创建默认联系人
-    if not frappe.db.exists("Contact", {"links": [{"link_doctype": "Customer", "link_name": doc.name}]}):
+    # Walkin 客户（散客）不创建联系人
+    if doc.customer_name == "Walkin" or doc.name == "Walkin":
+        return
+
+    # 自动创建默认联系人（用正确的子表过滤语法）
+    existing = frappe.get_all("Contact",
+        filters=[
+            ["Dynamic Link", "link_doctype", "=", "Customer"],
+            ["Dynamic Link", "link_name", "=", doc.name],
+        ],
+        limit=1
+    )
+    if not existing:
         contact = frappe.get_doc({
             "doctype": "Contact",
             "first_name": doc.customer_name,

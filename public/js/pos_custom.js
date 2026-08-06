@@ -1,0 +1,316 @@
+// ============================================================================
+// my_custom_app / public/js/pos_custom.js
+// POS 扫码颜色选择器
+//
+// 功能：扫码模板商品条码（如 CR-001，条码挂在模板上）→ 弹窗列出所有颜色
+//       Variant → 点击颜色后直接把对应 Variant 加入 POS 购物车。
+//       普通商品 / 已含颜色的 Variant 条码 → 保持 ERPNext 标准扫码行为。
+//
+// 注册方式（hooks.py）：
+//   page_js = {
+//       "point-of-sale": "public/js/pos_custom.js",
+//   }
+// ============================================================================
+
+frappe.provide("my_custom_app.pos");
+
+(function () {
+	"use strict";
+
+	let applied = false;
+	let styles_injected = false;
+	let active_dialog = null;
+
+	// ------------------------------------------------------------------
+	// 颜色选择弹窗
+	// ------------------------------------------------------------------
+	function show_color_picker(data) {
+		inject_styles();
+
+		const colors = data.colors || [];
+		if (!colors.length) {
+			frappe.show_alert({
+				message: __("该商品暂无可售的颜色规格"),
+				indicator: "orange",
+			});
+			frappe.utils.play_sound("error");
+			return;
+		}
+
+		// 若已有弹窗未关闭，先关闭避免堆叠
+		if (active_dialog) active_dialog.hide();
+
+		const dialog = new frappe.ui.Dialog({
+			title: __("选择颜色"),
+			static: true,
+			fields: [
+				{
+					fieldtype: "HTML",
+					fieldname: "color_picker_html",
+					options: build_color_picker_html(data),
+				},
+			],
+			primary_action_label: __("取消"),
+			primary_action() {
+				dialog.hide();
+			},
+		});
+		active_dialog = dialog;
+		dialog.onhide = () => {
+			if (active_dialog === dialog) active_dialog = null;
+		};
+
+		dialog.show();
+
+		// 点击色块 → 把对应 Variant 加入购物车
+		dialog.$wrapper.find(".color-picker-item").on("click", function () {
+			const variant_code = $(this).attr("data-variant-code");
+			if (!variant_code) return;
+			dialog.hide();
+			add_variant_to_cart(variant_code);
+		});
+	}
+
+	function build_color_picker_html(data) {
+		const template_name = frappe.utils.escape_html(data.template_name || "");
+		let items_html = "";
+
+		(data.colors || []).forEach((c) => {
+			const name = frappe.utils.escape_html(c.cor || c.variant_name || c.variant_code || "");
+			const image = c.swatch || c.image || "";
+			const swatch_html = image
+				? `<img class="color-swatch-img" src="${frappe.utils.escape_html(image)}" alt="${name}">`
+				: `<div class="color-swatch-abbr">${frappe.utils.escape_html(frappe.get_abbr(name))}</div>`;
+
+			items_html += `
+				<div class="color-picker-item"
+					data-variant-code="${frappe.utils.escape_html(c.variant_code)}"
+					title="${name}">
+					<div class="color-swatch">${swatch_html}</div>
+					<div class="color-name">${name}</div>
+				</div>`;
+		});
+
+		return `
+			<div class="color-picker-dialog">
+				<div class="color-picker-template">${template_name}</div>
+				<div class="color-picker-subtitle">${__("请选择颜色后加入购物车")}</div>
+				<div class="color-picker-grid">${items_html}</div>
+			</div>`;
+	}
+
+	// ------------------------------------------------------------------
+	// 把 Variant 加入购物车
+	// 复用标准 POS「搜索 → 渲染 → 点击 .item-wrapper」流程，
+	// 这样价格 / UOM / 税率等都会由 ERPNext 标准逻辑自动带出。
+	// ------------------------------------------------------------------
+	function add_variant_to_cart(variant_code) {
+		const item_selector = window.cur_pos && window.cur_pos.item_selector;
+		if (!item_selector || !item_selector.set_search_value) {
+			frappe.show_alert({
+				message: __("POS 组件尚未就绪，请重试"),
+				indicator: "orange",
+			});
+			return;
+		}
+
+		item_selector.set_search_value(variant_code);
+
+		let attempts = 0;
+		const timer = setInterval(() => {
+			attempts++;
+
+			const $exact = item_selector.$items_container.find(".item-wrapper").filter(function () {
+				return $(this).attr("data-item-code") === variant_code;
+			});
+
+			if ($exact.length) {
+				clearInterval(timer);
+				$exact.trigger("click");
+				item_selector.set_search_value("");
+				frappe.utils.play_sound("submit");
+			} else if (attempts > 20) {
+				clearInterval(timer);
+				item_selector.set_search_value("");
+				frappe.show_alert({
+					message: __("未找到商品 {0}，请检查价格表设置", [variant_code]),
+					indicator: "orange",
+				});
+				frappe.utils.play_sound("error");
+			}
+		}, 300);
+	}
+
+	// ------------------------------------------------------------------
+	// 自定义扫码处理：先问后端，模板 → 弹窗选颜色；否则走标准行为
+	// ------------------------------------------------------------------
+	function handle_barcode_scan(barcode) {
+		const item_selector = this; // ItemSelector 实例
+		if (!item_selector || !item_selector.search_field || !item_selector.$component.is(":visible")) {
+			return;
+		}
+
+		frappe.call({
+			method: "my_custom_app.api.pos.scan_barcode_for_pos",
+			args: { barcode: barcode },
+			callback: (r) => {
+				// 后端异常（网络/权限/数据库错误）——详情已由后端 log_error 记录
+				if (r.exc) {
+					item_selector.search_field.set_focus();
+					frappe.show_alert({
+						message: __("扫码查询失败，请稍后重试"),
+						indicator: "red",
+					});
+					frappe.utils.play_sound("error");
+					return;
+				}
+				const res = r.message;
+
+				// 后端明确返回错误
+				if (res && res.type === "error") {
+					item_selector.search_field.set_focus();
+					frappe.show_alert({
+						message: __("扫码查询失败，请稍后重试"),
+						indicator: "red",
+					});
+					frappe.utils.play_sound("error");
+					return;
+				}
+
+				// 模板商品（条码挂模板上）→ 弹窗选颜色
+				if (res && res.type === "template") {
+					show_color_picker(res);
+					return;
+				}
+
+				// 未找到
+				if (!res || res.type === "not_found") {
+					item_selector.search_field.set_focus();
+					frappe.show_alert({
+						message: __("未找到条码 {0} 对应的商品", [barcode]),
+						indicator: "orange",
+					});
+					frappe.utils.play_sound("error");
+					return;
+				}
+
+				// Variant 或普通商品 → 保持 ERPNext 标准扫码行为
+				item_selector.search_field.set_focus();
+				item_selector.set_search_value(res.item_code || barcode);
+				item_selector.barcode_scanned = true;
+			},
+		});
+	}
+
+	// ------------------------------------------------------------------
+	// 绑定：把 ItemSelector 的默认扫码监听替换成自定义实现
+	// ------------------------------------------------------------------
+	let poll_attempts = 0;
+
+	function apply_custom_barcode_handler() {
+		if (applied) return;
+
+		// 等待 POS bundle 加载完成（ItemSelector 类定义于 point-of-sale.bundle.js）
+		// 最多轮询 60 次（约 30 秒），超时则静默放弃，避免后台空转
+		if (!window.erpnext || !window.erpnext.PointOfSale || !window.erpnext.PointOfSale.ItemSelector) {
+			if (poll_attempts++ < 60) {
+				setTimeout(apply_custom_barcode_handler, 500);
+			}
+			return;
+		}
+
+		applied = true;
+
+		const original_bind_events = erpnext.PointOfSale.ItemSelector.prototype.bind_events;
+
+		// POS 每次刷新（如新建开单、重新进入）都会重建 ItemSelector 并重新执行
+		// bind_events，所以把替换逻辑挂在原型方法上，保证始终生效。
+		erpnext.PointOfSale.ItemSelector.prototype.bind_events = function () {
+			original_bind_events.call(this);
+
+			if (!window.onScan) return;
+			window.onScan.detachFrom(document);
+			window.onScan.attachTo(document, {
+				onScan: (sScancode) => handle_barcode_scan.call(this, sScancode),
+			});
+		};
+
+		// 极端时序兜底：如果组件在脚本加载前已构建完成，立即对当前实例生效
+		if (window.cur_pos && window.cur_pos.item_selector && window.onScan) {
+			window.onScan.detachFrom(document);
+			window.onScan.attachTo(document, {
+				onScan: (sScancode) => handle_barcode_scan.call(window.cur_pos.item_selector, sScancode),
+			});
+		}
+	}
+
+	// ------------------------------------------------------------------
+	// 弹窗样式
+	// ------------------------------------------------------------------
+	function inject_styles() {
+		if (styles_injected) return;
+		styles_injected = true;
+
+		const css = `
+			.color-picker-dialog { padding: 4px 0 8px; }
+			.color-picker-template {
+				font-size: 1.05rem;
+				font-weight: 600;
+				color: var(--text-color);
+				margin-bottom: 2px;
+			}
+			.color-picker-subtitle {
+				font-size: 0.85rem;
+				color: var(--text-muted);
+				margin-bottom: 12px;
+			}
+			.color-picker-grid {
+				display: grid;
+				grid-template-columns: repeat(auto-fill, minmax(92px, 1fr));
+				gap: 10px;
+				max-height: 46vh;
+				overflow-y: auto;
+				padding-right: 4px;
+			}
+			.color-picker-item {
+				cursor: pointer;
+				border: 1px solid var(--border-color);
+				border-radius: 10px;
+				padding: 10px 6px;
+				text-align: center;
+				background: var(--bg-color);
+				transition: border-color 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease;
+			}
+			.color-picker-item:hover {
+				border-color: var(--primary);
+				box-shadow: 0 3px 10px rgba(0, 0, 0, 0.14);
+				transform: translateY(-2px);
+			}
+			.color-picker-item:active { transform: translateY(0); }
+			.color-swatch {
+				width: 54px;
+				height: 54px;
+				margin: 0 auto 8px;
+				border-radius: 50%;
+				overflow: hidden;
+				display: flex;
+				align-items: center;
+				justify-content: center;
+				background: var(--control-bg);
+				border: 1px solid var(--border-color);
+			}
+			.color-swatch-img { width: 100%; height: 100%; object-fit: cover; }
+			.color-swatch-abbr { font-size: 1.15rem; font-weight: 700; color: var(--text-muted); }
+			.color-name { font-size: 0.8rem; color: var(--text-color); word-break: break-all; line-height: 1.3; }
+		`;
+
+		$("<style>").attr("type", "text/css").text(css).appendTo("head");
+	}
+
+	// 启动
+	if (document.readyState === "loading") {
+		document.addEventListener("DOMContentLoaded", () => apply_custom_barcode_handler());
+	} else {
+		apply_custom_barcode_handler();
+	}
+})();

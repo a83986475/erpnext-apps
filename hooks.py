@@ -1,28 +1,16 @@
-# my_custom_app/hooks.py
-# ========================
-# 这是自定义 App 的核心配置文件。所有扩展点都在这里注册。
-#
-# 使用方法：
-# 1. bench new-app my_custom_app  # 创建 app
-# 2. 把本文件覆盖到 apps/my_custom_app/my_custom_app/hooks.py
-# 3. bench --site dev.localhost install-app my_custom_app
-# ========================
-
 app_name = "my_custom_app"
 app_title = "我的定制"
-app_publisher = "你的名字"
-app_description = "ERPNext 中文定制功能 - 包括中文翻译、自定义验证、自动编号等"
+app_publisher = "yangyang7920"
+app_description = "ERPNext 中文定制功能 - 汉化 + 业务定制 + 多规格支持"
 app_icon = "fa fa-cog"
 app_color = "#3498db"
-app_email = "your@email.com"
+app_email = "a83986475@gmail.com"
 app_license = "GNU General Public License (v3)"
-source_link = "https://github.com/你的用户名/my_custom_app"
-app_logo_url = "/assets/my_custom_app/images/logo.svg"
-app_home = "/desk/home"
+source_link = "https://github.com/a83986475/erpnext-apps"
+app_logo_url = "/assets/my_custom_app/logo.png"
+app_home = "."
 
-# ------------------- 文档事件钩子（最常用） -------------------
-# 格式: "DocType": { "事件名": "模块.函数" }
-# 事件名: validate, on_submit, on_cancel, on_trash, before_insert, after_insert, on_update
+# ------------------- DocType 事件钩子 -------------------
 doc_events = {
     # ========== 销售模块 ==========
     "Sales Invoice": {
@@ -55,6 +43,7 @@ doc_events = {
     # ========== 库存模块 ==========
     "Item": {
         "validate": "my_custom_app.api.stock.validate_item",
+        "after_insert": "my_custom_app.api.stock.auto_create_item_price",
     },
     "Stock Entry": {
         "on_submit": "my_custom_app.api.stock.on_stock_entry_submitted",
@@ -73,52 +62,44 @@ doc_events = {
 }
 
 # ------------------- 类重写 -------------------
-# 用来自定义类替代 ERPNext 原有的 DocType 类
 extend_doctype_class = {
     "Sales Invoice": "my_custom_app.override.sales_invoice.CustomSalesInvoice",
 }
 
-# ------------------- API 方法重写 -------------------
 override_whitelisted_methods = {}
 
-# ------------------- 安装/迁移钩子 -------------------
+# ------------------- 安装/迁移 -------------------
 after_install = "my_custom_app.install.after_install"
 after_migrate = "my_custom_app.install.after_migrate"
 
-# ------------------- 站点启动时的 boot 信息 -------------------
-extend_bootinfo = []
+# ------------------- 启动信息 -------------------
+extend_bootinfo = "my_custom_app.boot.extended_bootinfo"
 
 # ------------------- 权限 -------------------
 permission_query_conditions = {}
 has_permission = {}
 
-# ------------------- 调度任务（定时任务） -------------------
+# ------------------- 调度任务 -------------------
 scheduler_events = {
     "daily": [
         "my_custom_app.tasks.daily_tasks",
     ],
-    "daily_long": [],
-    "daily_maintenance": [],
-    "hourly": [],
     "weekly": [
         "my_custom_app.tasks.weekly_tasks",
     ],
-    "monthly": [],
     "cron": {
-        # 每天凌晨2点执行
         "0 2 * * *": [
             "my_custom_app.tasks.custom_cron_task",
         ],
     },
 }
 
-# ------------------- 全局搜索 -------------------
+# ------------------- UI 扩展 -------------------
 global_search_doctypes = {}
-
-# ------------------- 网页路由 -------------------
 website_route_rules = []
-
-# ------------------- 导航栏项目 -------------------
 standard_navbar_items = []
 
-# ------------------- 门户菜单 -------------------
+# Custom JS for standard pages
+page_js = {
+    "point-of-sale": "public/js/pos_custom.js",
+}

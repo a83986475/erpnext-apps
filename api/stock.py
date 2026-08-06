@@ -41,3 +41,41 @@ def validate_delivery_note(doc, method=None):
                     item.item_code, item.warehouse, item.qty, actual_qty
                 )
             )
+
+
+def auto_create_item_price(doc, method=None):
+    """Variant 创建时自动从模板生成 Item Price"""
+    if not doc.variant_of:
+        return  # 不是 Variant，跳过
+
+    # 获取模板价格
+    if not doc.standard_rate:
+        # 如果 Variant 没有价格，尝试从模板继承
+        template_rate = frappe.db.get_value("Item", doc.variant_of, "standard_rate")
+        if not template_rate:
+            return  # 模板也没有价格，跳过
+
+    # 检查是否已有 Item Price
+    existing = frappe.db.get_value("Item Price",
+        {"item_code": doc.name, "price_list": "Standard Selling", "selling": 1},
+        "name"
+    )
+    if existing:
+        return  # 已存在，不重复创建
+
+    # 获取默认货币
+    currency = frappe.defaults.get_user_default("currency") or "MZN"
+
+    # 创建 Item Price
+    try:
+        price_doc = frappe.get_doc({
+            "doctype": "Item Price",
+            "item_code": doc.name,
+            "price_list": "Standard Selling",
+            "price_list_rate": doc.standard_rate,
+            "selling": 1,
+            "currency": currency,
+        })
+        price_doc.insert(ignore_permissions=True)
+    except Exception as e:
+        frappe.log_error(f"Item Price 自动创建失败 [{doc.name}]: {e}", "my_custom_app.auto_price")

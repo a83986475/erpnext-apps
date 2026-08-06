@@ -4,27 +4,19 @@ Active,活跃
 Activity Cost,活动成本
 Activity Type,活动类型
 Address,地址
-All Season,四季通用
 Allow Rename Attribute Value,允许重命名属性值
 Amount exceeds approval limit,金额超过审批限额
 Approval Date,审批日期
 Approved,已审批
 Approver,审批人
-Apricot,杏色
 Attendance,考勤
 Attribute Value,属性值
 Attributes,规格属性
-Autumn,秋季
 Available,可用数量
-Bamboo Fiber,竹纤维
 Bank Account,银行账户
 Batch No,批号
 Bill of Materials,物料清单
 Bin,库存余额
-Black,黑色
-Blended,混纺
-Blue,蓝色
-Boys,男童
 Budget,预算
 Budget Variance,预算差异
 Campaign,营销活动
@@ -38,8 +30,6 @@ Contact,联系人
 Copy Fields to Variant,复制字段到变体
 Cost Allocation,成本分配
 Cost Center,成本中心
-Cotton,纯棉
-Cotton Linen,棉麻
 Created By,创建人
 Created On,创建日期
 Credit,贷方
@@ -67,14 +57,10 @@ Enabled,已启用
 Exchange Rate,汇率
 Expense Claim,费用报销
 Fiscal Year,财年
-Fleece,摇粒绒
 From Range,起始范围
 Fully Paid,已全额付款
 Gender,性别
-Girls,女童
 Grand Total,总计
-Gray,灰色
-Green,绿色
 Has Variants,启用多规格
 Inactive,不活跃
 Increment,增量
@@ -90,7 +76,6 @@ Item Name,物料名称
 Item Variant Settings,物料变体设置
 Job Card,作业卡
 Journal Entry,日记账
-Khaki,卡其
 Last Transaction Date,上次交易日期
 Lead,潜在客户
 Leave Application,请假申请
@@ -104,15 +89,12 @@ Material Request,物料需求单
 Material Transfer,物料转移
 Milestone,里程碑
 Mobile No,手机号码
-Modal,莫代尔
 Modified By,修改人
 Modified On,修改日期
 Name,名称
-Navy,藏青
 Net Total,净额
 No records found,未找到记录
 Numeric Values,数值属性
-One Size,均码
 Operation,工序
 Operation completed successfully,操作成功完成
 Opportunity,商机
@@ -128,10 +110,8 @@ Pending,待处理
 Pending Approval,待审批
 Phantom Item,虚拟物料
 Phone,电话
-Pink,粉色
 Please check the input data,请检查输入数据
 Please select a valid option,请选择有效选项
-Polyester,涤纶
 Print Format,打印格式
 Priority,优先级
 Production Order,生产订单
@@ -141,12 +121,10 @@ Projected,预计数量
 Purchase Invoice,采购发票
 Purchase Order,采购订单
 Purchase Receipt,采购收货单
-Purple,紫色
 Quotation,报价单
 Receive,收款
 Record cancelled,记录已取消
 Record submitted,记录已提交
-Red,红色
 Reference,参考号
 Rejected,已拒绝
 Remarks,备注
@@ -165,17 +143,14 @@ Season,季节
 Serial No,序列号
 Shipment Tracking,物流追踪
 Shipping Rule,运费规则
-Silk,丝绸
 Size,尺码
 Skip Material Transfer,跳过物料转移
 Source,Target
 Spec Summary,规格摘要
-Spring,春季
 Status,状态
 Stock Entry,库存入库单
 Stock Reconciliation,库存盘点
 Sub Assembly,子装配件
-Summer,夏季
 Supplier,供应商
 Supplier Name,供应商名称
 Supplier Quotation,供应商报价
@@ -189,7 +164,6 @@ Ticket,工单
 Timesheet,工时表
 To Range,结束范围
 Travel Request,出差申请
-Unisex,中性
 Unpaid,未付款
 Valid Till,有效期至
 Variant,变体
@@ -198,12 +172,8 @@ Variant Item,变体物料
 Variant Of,所属模板
 Variants,多规格
 Warehouse,仓库
-White,白色
-Winter,冬季
-Wool,羊毛
 Work Order,工单
 Workstation,工作站
-Yellow,黄色
 custom_approval_level,审批级别
 custom_contract_status,合同状态
 custom_contract_value,合同金额
