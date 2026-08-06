@@ -101,6 +101,11 @@ global_search_doctypes = {}
 website_route_rules = []
 standard_navbar_items = []
 
+# 全局 CSS：隐藏表单评论输入框（保留活动时间线）
+app_include_css = [
+    "/assets/solua_home/css/hide_comments.css",
+]
+
 # Custom JS for standard pages
 page_js = {
     "point-of-sale": "public/js/pos_custom.js",
