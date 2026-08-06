@@ -1,5 +1,5 @@
 // ============================================================================
-// my_custom_app / public/js/pos_custom.js
+// solua_home / public/js/pos_custom.js
 // POS 扫码颜色选择器
 //
 // 功能：扫码模板商品条码（如 CR-001，条码挂在模板上）→ 弹窗列出所有颜色
@@ -12,7 +12,7 @@
 //   }
 // ============================================================================
 
-frappe.provide("my_custom_app.pos");
+frappe.provide("solua_home.pos");
 
 (function () {
 	"use strict";
@@ -151,7 +151,7 @@ frappe.provide("my_custom_app.pos");
 		}
 
 		frappe.call({
-			method: "my_custom_app.api.pos.scan_barcode_for_pos",
+			method: "solua_home.api.pos.scan_barcode_for_pos",
 			args: { barcode: barcode },
 			callback: (r) => {
 				// 后端异常（网络/权限/数据库错误）——详情已由后端 log_error 记录

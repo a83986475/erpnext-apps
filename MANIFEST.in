@@ -1,1 +1,1 @@
-recursive-include my_custom_app *
+recursive-include solua_home *

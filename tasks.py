@@ -1,4 +1,4 @@
-# my_custom_app/tasks.py
+# solua_home/tasks.py
 # ========================
 # 定时任务（由 hooks.py 中的 scheduler_events 触发）
 # ========================
@@ -12,19 +12,19 @@ def daily_tasks():
     """每日执行的任务"""
     check_overdue_invoices()
     check_low_stock_items()
-    frappe.log_error("每日任务执行完毕", "my_custom_app 定时任务")
+    frappe.log_error("每日任务执行完毕", "solua_home 定时任务")
 
 
 def weekly_tasks():
     """每周执行的任务"""
     generate_weekly_report()
-    frappe.log_error("每周任务执行完毕", "my_custom_app 定时任务")
+    frappe.log_error("每周任务执行完毕", "solua_home 定时任务")
 
 
 def custom_cron_task():
     """自定义 cron 表达式触发的任务（每天凌晨2点）"""
     cleanup_old_logs()
-    frappe.log_error("凌晨清理任务执行完毕", "my_custom_app 定时任务")
+    frappe.log_error("凌晨清理任务执行完毕", "solua_home 定时任务")
 
 
 # ==================== 具体任务实现 ====================

@@ -4,9 +4,9 @@ import frappe
 
 def extended_bootinfo(bootinfo):
     """注入自定义 boot 信息"""
-    bootinfo["my_custom_app"] = {
+    bootinfo["solua_home"] = {
         "version": "0.0.1",
-        "app_name": "my_custom_app",
+        "app_name": "solua_home",
         "curtain_colors": get_curtain_colors(),
     }
 

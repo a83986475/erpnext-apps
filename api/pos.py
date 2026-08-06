@@ -76,7 +76,7 @@ def scan_barcode_for_pos(barcode):
             "item_name": item_name,
         }
     except Exception as e:
-        frappe.log_error(f"POS 扫码查询失败 ({barcode}): {e!s}", "my_custom_app")
+        frappe.log_error(f"POS 扫码查询失败 ({barcode}): {e!s}", "solua_home")
         return {"type": "error", "message": str(e)}
 
 

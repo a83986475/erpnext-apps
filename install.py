@@ -189,7 +189,7 @@ def add_translations():
                 })
                 doc.insert(ignore_permissions=True)
         except Exception as e:
-            frappe.log_error(f"翻译导入失败 [{source}]: {e}", "my_custom_app.translations")
+            frappe.log_error(f"翻译导入失败 [{source}]: {e}", "solua_home.translations")
 
     frappe.db.commit()
 
@@ -217,7 +217,7 @@ def add_custom_fields():
                 })
                 doc.insert(ignore_permissions=True)
         except Exception as e:
-            frappe.log_error(f"自定义字段创建失败 [{field.get('fieldname')}]: {e}", "my_custom_app.custom_fields")
+            frappe.log_error(f"自定义字段创建失败 [{field.get('fieldname')}]: {e}", "solua_home.custom_fields")
 
     frappe.db.commit()
 
@@ -238,7 +238,7 @@ def add_item_attributes():
             })
             doc.insert(ignore_permissions=True)
         except Exception as e:
-            frappe.log_error(f"Item Attribute 创建失败 [{attr_name}]: {e}", "my_custom_app.attributes")
+            frappe.log_error(f"Item Attribute 创建失败 [{attr_name}]: {e}", "solua_home.attributes")
 
     frappe.db.commit()
 
@@ -298,7 +298,7 @@ def add_variant_custom_fields():
                 })
                 doc.insert(ignore_permissions=True)
         except Exception as e:
-            frappe.log_error(f"Variant 自定义字段创建失败 [{field.get('fieldname')}]: {e}", "my_custom_app.variant_fields")
+            frappe.log_error(f"Variant 自定义字段创建失败 [{field.get('fieldname')}]: {e}", "solua_home.variant_fields")
 
     frappe.db.commit()
 
@@ -352,6 +352,6 @@ def configure_item_variant_settings():
         if changed:
             settings.save(ignore_permissions=True)
     except Exception as e:
-        frappe.log_error(f"Item Variant Settings 配置失败: {e}", "my_custom_app.variant_settings")
+        frappe.log_error(f"Item Variant Settings 配置失败: {e}", "solua_home.variant_settings")
 
     frappe.db.commit()

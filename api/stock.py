@@ -1,4 +1,4 @@
-# my_custom_app/api/stock.py
+# solua_home/api/stock.py
 # ============================
 # 库存模块的自定义验证和事件处理
 # ============================
@@ -78,4 +78,4 @@ def auto_create_item_price(doc, method=None):
         })
         price_doc.insert(ignore_permissions=True)
     except Exception as e:
-        frappe.log_error(f"Item Price 自动创建失败 [{doc.name}]: {e}", "my_custom_app.auto_price")
+        frappe.log_error(f"Item Price 自动创建失败 [{doc.name}]: {e}", "solua_home.auto_price")

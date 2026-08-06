@@ -1,4 +1,4 @@
-# my_custom_app - ERPNext 中文定制
+# solua_home - ERPNext 中文定制
 
 ERPNext v16 中文定制功能扩展包。提供常用模块的中文翻译和自定义字段。
 

@@ -1,4 +1,4 @@
-# my_custom_app/override/sales_invoice.py
+# solua_home/override/sales_invoice.py
 # =========================================
 # 重写 SalesInvoice 类的方法
 # 当 hooks.py 中的 doc_events 不够用时，可以用这种方式完全重写方法
@@ -15,7 +15,7 @@ class CustomSalesInvoice(SalesInvoice):
 
     使用方式：在 hooks.py 中注册
     extend_doctype_class = {
-        "Sales Invoice": "my_custom_app.override.sales_invoice.CustomSalesInvoice",
+        "Sales Invoice": "solua_home.override.sales_invoice.CustomSalesInvoice",
     }
     """
 
