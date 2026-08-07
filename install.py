@@ -7,6 +7,7 @@ def after_install():
     add_translations()
     add_custom_fields()
     add_item_attributes()
+    add_color_pool()
     add_variant_custom_fields()
     configure_item_variant_settings()
     sync_standard_print_formats()
@@ -198,9 +199,32 @@ def add_translations():
         "POS Short Name": "POS收银简称",
         "Main Image": "主图",
         "Color Swatch": "色卡图",
+        "Swatch Image": "色卡图",
         "Color": "颜色",
         "Size": "尺码",
         "Material": "材质",
+        # 颜色池（Cor 属性）
+        "Branco": "白色",
+        "Preto": "黑色",
+        "Prata": "银色",
+        "Cinza": "灰色",
+        "Azul": "蓝色",
+        "Vermelho": "红色",
+        "Verde": "绿色",
+        "Amarelo": "黄色",
+        "Bege": "米色",
+        "Laranja": "橙色",
+        "Rosa": "粉色",
+        "Roxo": "紫色",
+        "Dourado": "金色",
+        "Marrom": "棕色",
+        "Turquesa": "青色",
+        "Creme": "奶油色",
+        # 批量生成变体
+        "Bulk Create Variants": "批量生成变体",
+        "Select Template Item": "选择模板物料",
+        "Select Colors": "选择颜色",
+        "Create Variants": "创建变体",
     }
 
     for source, translated in translations.items():
@@ -312,6 +336,14 @@ def add_variant_custom_fields():
             "insert_after": "image",
             "description": "同款不同颜色的色卡小图",
         },
+        {
+            "dt": "Item Attribute Value",
+            "fieldname": "swatch_image",
+            "label": "色卡图",
+            "fieldtype": "Attach Image",
+            "insert_after": "abbr",
+            "description": "该颜色值的色卡小图（POS 颜色弹窗/设计器显示）",
+        },
     ]
 
     for field in fields:
@@ -327,6 +359,78 @@ def add_variant_custom_fields():
             frappe.log_error(f"Variant 自定义字段创建失败 [{field.get('fieldname')}]: {e}", "solua_home.variant_fields")
 
     frappe.db.commit()
+
+
+# 窗帘颜色池（Cor 属性）：全部常用颜色 + 唯一缩写
+# 变体编码 = 模板编码-缩写（如 CR-001-PR = Preto 黑）；缩写必须全局唯一
+CURTAIN_COLOR_POOL = [
+    ("Branco", "BR"),      # 白
+    ("Preto", "PR"),       # 黑
+    ("Prata", "PT"),       # 银（PT 避免与 Preto 的 PR 冲突）
+    ("Cinza", "CZ"),       # 灰
+    ("Azul", "AZ"),        # 蓝
+    ("Vermelho", "VM"),    # 红
+    ("Verde", "VD"),       # 绿
+    ("Amarelo", "AM"),     # 黄
+    ("Bege", "BG"),        # 米
+    ("Laranja", "LJ"),     # 橙
+    ("Rosa", "RS"),        # 粉
+    ("Roxo", "RX"),        # 紫
+    ("Dourado", "DR"),     # 金
+    ("Marrom", "MR"),      # 棕
+    ("Turquesa", "TQ"),    # 青
+    ("Creme", "CM"),       # 奶油
+]
+
+
+def add_color_pool():
+    """初始化/更新窗帘颜色池（Cor 属性 16 色，缩写唯一）
+
+    - 属性不存在则创建；已存在则按 CURTAIN_COLOR_POOL 重建颜色值
+    - 幂等：可重复执行，不会重复插入
+    """
+    if not frappe.db.exists("Item Attribute", "Cor"):
+        doc = frappe.get_doc({
+            "doctype": "Item Attribute",
+            "attribute_name": "Cor",
+            "numeric_values": 0,
+        })
+        doc.insert(ignore_permissions=True)
+
+    attr = frappe.get_doc("Item Attribute", "Cor")
+    # 校验缩写唯一性
+    abbrs = [a for _, a in CURTAIN_COLOR_POOL]
+    dupes = {x for x in abbrs if abbrs.count(x) > 1}
+    if dupes:
+        frappe.log_error(f"颜色池缩写重复: {dupes}", "solua_home.color_pool")
+        raise ValueError(f"Color pool abbreviations conflict: {dupes}")
+
+    existing = {v.attribute_value for v in attr.item_attribute_values}
+    pool = dict(CURTAIN_COLOR_POOL)
+    changed = False
+
+    # 更新/新增
+    for v in attr.item_attribute_values:
+        if v.attribute_value in pool:
+            new_abbr = pool[v.attribute_value]
+            if v.abbr != new_abbr:
+                v.abbr = new_abbr
+                changed = True
+            del pool[v.attribute_value]
+        else:
+            # 不在池子里的旧值移除（避免与池子冲突）
+            attr.item_attribute_values.remove(v)
+            changed = True
+
+    # 池子里新增的
+    for value, abbr in pool.items():
+        attr.append("item_attribute_values", {"attribute_value": value, "abbr": abbr})
+        changed = True
+
+    if changed:
+        attr.save(ignore_permissions=True)
+        frappe.db.commit()
+    return len(CURTAIN_COLOR_POOL)
 
 
 def clear_prefilled_attributes():

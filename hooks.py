@@ -123,4 +123,5 @@ app_include_js = [
 page_js = {
     "point-of-sale": "public/js/pos_custom.js",
     "print-designer": "public/js/print_designer_zh.js",
+    "item": "public/js/item_variant_wizard.js",
 }
