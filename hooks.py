@@ -114,6 +114,11 @@ app_include_css = [
     "/assets/solua_home/css/hide_comments.css",
 ]
 
+# 全局 JS：Link 输入框有内容时点击也弹出下拉（全站表单生效）
+app_include_js = [
+    "/assets/solua_home/js/solua_home_global.js",
+]
+
 # Custom JS for standard pages
 page_js = {
     "point-of-sale": "public/js/pos_custom.js",
