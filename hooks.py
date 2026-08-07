@@ -117,4 +117,5 @@ app_include_css = [
 # Custom JS for standard pages
 page_js = {
     "point-of-sale": "public/js/pos_custom.js",
+    "print-designer": "public/js/print_designer_zh.js",
 }

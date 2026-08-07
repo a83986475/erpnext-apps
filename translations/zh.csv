@@ -185,3 +185,44 @@ custom_renewal_date,续约日期
 custom_risk_level,风险级别
 {0} is not a template item,{0} 不是模板物料
 Please specify a template item,请指定模板物料
+
+Action,操作
+Are you sure you want to delete the page?,确定要删除这个页面吗？
+Atleast 1 element is required inside body,正文中至少需要 1 个元素
+Barcode (B),条码 (B)
+Components (C),组件 (C)
+Create,创建
+Create New,新建
+Create or Edit Print Format,创建或编辑打印格式
+Do you want to save copy of it ?,是否保存一份副本？
+Edit,编辑
+Edit Format,编辑格式
+Enter Label,输入标签
+Error Generating PDF...,生成 PDF 出错...
+Form,表单
+Full Page,整页
+Image (I),图片 (I)
+in footer,在页脚
+in header,在页眉
+in table, auto layout failed,在表格中，自动布局失败
+Language,语言
+Letter Head,信纸抬头
+Loading Print Format,正在加载打印格式
+Mouse Pointer (M),鼠标指针 (M)
+PDF,PDF
+Please enable pop-ups,请启用弹窗
+Please resolve overlapping elements ,请解决元素重叠问题
+Please select DocType first,请先选择单据类型
+Print,打印
+Print Format,打印格式
+Print Format Name,打印格式名称
+Print Format not saved,打印格式未保存
+Rectangle (R),矩形 (R)
+Refresh,刷新
+Search Doctypes,搜索单据类型
+Search Field by label, fieldname or fieldtype,按标签、字段名或字段类型搜索
+Select Document Type,选择单据类型
+Select Print Format,选择打印格式
+Set as Default,设为默认
+Table (A),表格 (A)
+Try the new Print Designer,试试新的打印设计器
