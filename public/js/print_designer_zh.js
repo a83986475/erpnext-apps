@@ -216,6 +216,66 @@ frappe.provide("solua_home.print_designer_zh");
 		observer.observe(document.body, { childList: true, subtree: true });
 	};
 
+	// ============================================================
+	// 方案 A：过滤 DocType 下拉，只显示常用单据
+	// ============================================================
+	// print_designer 的新建对话框里「选择单据类型」是 Link 控件
+	// （options: DocType, filters: {istable: 0}），会列出全部 459 个 DocType。
+	//
+	// 机制（frappe link.js）：每次搜索走 get_search_args() -> set_custom_query(args)，
+	//   - df.get_query 为对象时合并其 filters（line 762-835）
+	//   - df.filters 存在时直接合并进 args.filters（line 840-843）
+	// print_designer 的对话框传的是 df.filters，所以在这里合并 name 白名单。
+	// 只影响本页面（脚本经 page_js 只在 print-designer 加载）的 DocType 链接，
+	// 其他页面的 DocType 下拉不受影响。
+	const ALLOWED_DOCTYPES = [
+		"Item", "Item Group", "Item Attribute", "Item Price",
+		"Customer", "Customer Group", "Supplier", "Supplier Group",
+		"Sales Invoice", "Sales Order", "Quotation", "Delivery Note",
+		"Purchase Invoice", "Purchase Order", "Purchase Receipt", "Supplier Quotation",
+		"Payment Entry", "Journal Entry", "Sales Partner", "Price List",
+		"POS Profile", "POS Opening Entry", "POS Closing Entry",
+		"Stock Entry", "Stock Reconciliation", "Warehouse",
+		"Employee", "User", "Address", "Contact", "Project", "Task", "Company",
+	];
+
+	const applyDoctypeFilter = () => {
+		if (!frappe.ui || !frappe.ui.form || !frappe.ui.form.LinkControl) return false;
+		const orig = frappe.ui.form.LinkControl.prototype.set_custom_query;
+		if (!orig || orig.__solua_filtered) return true;
+
+		frappe.ui.form.LinkControl.prototype.set_custom_query = function (args) {
+			const isDocTypePicker = this.df && this.df.options === "DocType";
+			if (isDocTypePicker) {
+				// 路径 1（print_designer 实际用的）：df.filters 直接合并（line 840）
+				if (this.df.filters && !this.df.filters.name) {
+					// 浅拷贝后再加白名单，避免污染 Dialog 的原始 df 定义
+					this.df.filters = { ...this.df.filters, name: ["in", ALLOWED_DOCTYPES] };
+				}
+				// 路径 2（兜底）：df.get_query / this.get_query 传 filters 的情况
+				const gq = this.get_query || this.df.get_query;
+				if (gq && $.isPlainObject(gq) && gq.filters && !gq.filters.name && !gq.__solua_patched) {
+					gq.filters = { ...gq.filters, name: ["in", ALLOWED_DOCTYPES] };
+					gq.__solua_patched = true; // 标记在 gq 外层，不会随 filters 发到服务器
+				}
+			}
+			return orig.apply(this, arguments);
+		};
+		frappe.ui.form.LinkControl.prototype.set_custom_query.__solua_filtered = true;
+		return true;
+	};
+
+	// LinkControl 可能在脚本加载时尚未就绪，轮询等它加载（最多 10 秒）
+	const ensureDoctypeFilter = () => {
+		if (applyDoctypeFilter()) return;
+		let tries = 0;
+		const iv = setInterval(() => {
+			tries++;
+			if (applyDoctypeFilter() || tries > 20) clearInterval(iv);
+		}, 500);
+	};
+	ensureDoctypeFilter();
+
 	// print-designer 页面加载时执行
 	const origLoad = frappe.pages["print-designer"] && frappe.pages["print-designer"].on_page_load;
 	if (origLoad) {
