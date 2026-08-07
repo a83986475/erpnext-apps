@@ -263,6 +263,30 @@ frappe.provide("solua_home.print_designer_zh");
 		}
 	};
 
+	// ============================================================
+	// 顶栏注入「新建/编辑格式」按钮
+	// ============================================================
+	// 设计器顶栏（AppHeader）默认只有 Exit（回上一页），不能直接新建/编辑别的格式。
+	// 这里在 Exit 按钮旁注入一个按钮：点击后回到基础路由 /app/print-designer，
+	// 触发 on_page_show -> load_print_designer -> 自动弹出「创建或编辑打印格式」对话框。
+	// 不动 print_designer 源码；按钮只注入一次（幂等）。
+	const injectFormatButton = () => {
+		if (document.querySelector(".header .solua-format-btn")) return true;
+		const exitBtn = document.querySelector(".header .exit-btn");
+		if (!exitBtn) return false; // 顶栏尚未渲染（未打开格式时）
+		const btn = document.createElement("button");
+		btn.className = "btn btn-sm btn-default solua-format-btn";
+		btn.type = "button";
+		btn.style.marginRight = "8px";
+		btn.textContent = "新建/编辑格式";
+		btn.title = "新建或编辑其他打印格式";
+		btn.addEventListener("click", () => {
+			frappe.set_route("print-designer");
+		});
+		exitBtn.before(btn);
+		return true;
+	};
+
 	const start = () => {
 		if (applied) return;
 
@@ -274,6 +298,7 @@ frappe.provide("solua_home.print_designer_zh");
 
 		// 初次应用
 		applyToTree(document.body);
+		injectFormatButton();
 
 		// 监听后续 Vue 渲染产生的节点。注意：mutations 必须累积处理，
 		// 否则节流期间新到的批次会被整体丢弃（弹窗字段列表渲染时丢批严重）
@@ -296,6 +321,8 @@ frappe.provide("solua_home.print_designer_zh");
 						}
 					}
 				}
+				// 顶栏渲染后注入「新建/编辑格式」按钮（幂等）
+				injectFormatButton();
 			}, 80);
 		});
 
