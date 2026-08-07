@@ -18,6 +18,20 @@ def validate_item(doc, method=None):
     if doc.item_name and re.search(r'[<>"\'/]', doc.item_name):
         frappe.throw(_("物料名称不能包含特殊字符（< > \" \' /）"))
 
+    # 标签条码自动填充（Print Designer 用）
+    # 优先级：子表 barcodes 第一条 > 变体继承模板条码
+    if not doc.get("custom_label_barcode"):
+        barcode = None
+        if doc.barcodes:
+            barcode = doc.barcodes[0].get("barcode")
+        if not barcode and doc.variant_of:
+            # 变体无独立条码时继承模板条码（窗帘：同条码多色）
+            barcode = frappe.db.get_value("Item", doc.variant_of, "custom_label_barcode")
+            if not barcode:
+                barcode = frappe.db.get_value("Item Barcode", {"parent": doc.variant_of}, "barcode")
+        if barcode:
+            doc.custom_label_barcode = barcode
+
 
 def on_stock_entry_submitted(doc, method=None):
     """库存入库/出库提交后"""
