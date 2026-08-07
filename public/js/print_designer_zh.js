@@ -132,6 +132,42 @@ frappe.provide("solua_home.print_designer_zh");
 		"JAN": "JAN",
 		"PZN": "PZN",
 
+		// ---- 动态文本弹窗：字段分组标题（fieldtype 名，裸渲染）----
+		"Document": "文档",
+		"Data": "文本",
+		"Small Text": "小文本",
+		"Text": "多行文本",
+		"Text Editor": "富文本",
+		"Markdown Editor": "Markdown",
+		"Link": "链接",
+		"Dynamic Link": "动态链接",
+		"Table": "子表格",
+		"Table MultiSelect": "多选子表",
+		"Check": "勾选",
+		"Select": "下拉选择",
+		"Currency": "货币",
+		"Float": "小数",
+		"Int": "整数",
+		"Percent": "百分比",
+		"Code": "代码",
+		"Date": "日期",
+		"Datetime": "日期时间",
+		"Time": "时间",
+		"Barcode": "条码",
+		"Attach Image": "附件图片",
+		"Attach": "附件",
+		"Button": "按钮",
+		"Read Only": "只读",
+		"Password": "密码",
+		"Color": "颜色",
+		"Rating": "评分",
+		"Duration": "时长",
+		"Geolocation": "定位",
+		"Signature": "签名",
+		"JSON": "JSON",
+		"Dynamic Text": "动态文本",
+		"Hidden Fields": "显示隐藏字段",
+
 		// ---- 提示/状态 ----
 		"Please enable pop-ups": "请启用弹窗",
 		"Please resolve overlapping elements ": "请解决元素重叠问题",
@@ -146,10 +182,52 @@ frappe.provide("solua_home.print_designer_zh");
 		"Loading...": "加载中...",
 	};
 
-	// 只处理有实际翻译的文本
+	// ============================================================
+	// 系统 zh 翻译字典（兜底翻译：覆盖字段标签等海量字符串）
+	// ============================================================
+	// 设计器字段列表裸渲染 {{ field.label }}（不走 __()），且会话语言可能是 en。
+	// 这里从服务端拉取合并后的 zh 翻译字典（solua_home.api.common.get_zh_translations，
+	// 服务端缓存 24h），用 sessionStorage 缓存避免每次访问都下载 685KB。
+	const ZH_DICT_CACHE_KEY = "solua_home_zh_translations_v1";
+	let zhDict = null;
+	let zhDictReady = false;
+
+	const loadZhDict = () => {
+		try {
+			const cached = sessionStorage.getItem(ZH_DICT_CACHE_KEY);
+			if (cached) {
+				zhDict = JSON.parse(cached);
+				zhDictReady = true;
+				return;
+			}
+		} catch (e) {
+			/* ignore */
+		}
+		frappe.call({
+			method: "solua_home.api.common.get_zh_translations",
+			callback: (r) => {
+				if (r && r.message) {
+					zhDict = r.message;
+					zhDictReady = true;
+					try {
+						sessionStorage.setItem(ZH_DICT_CACHE_KEY, JSON.stringify(zhDict));
+					} catch (e) {
+						/* ignore */
+					}
+					// 字典就绪后，把当前已渲染的文本再刷一遍（含打开着的弹窗）
+					if (applied) applyToTree(document.body);
+				}
+			},
+		});
+	};
+
+	// 只处理有实际翻译的文本：ZH 映射优先，其次系统 zh 字典兜底
 	const translateText = (text) => {
 		const trimmed = text.trim();
 		if (ZH[trimmed]) return ZH[trimmed];
+		if (zhDictReady && zhDict && zhDict[trimmed] && zhDict[trimmed] !== trimmed) {
+			return zhDict[trimmed];
+		}
 		return null;
 	};
 
@@ -170,6 +248,7 @@ frappe.provide("solua_home.print_designer_zh");
 
 	let observer = null;
 	let applyTimer = null;
+	let pendingMutations = [];
 	let applied = false;
 
 	const applyToTree = (root) => {
@@ -186,22 +265,29 @@ frappe.provide("solua_home.print_designer_zh");
 
 	const start = () => {
 		if (applied) return;
-		applied = true;
 
-		// 确认页面存在（print-designer 路由）
+		// 确认页面存在（print-designer 路由）；未就绪则不置 applied，稍后重试
 		if (!frappe.pages["print-designer"] || !frappe.router || frappe.router.current_route[0] !== "print-designer") {
 			return;
 		}
+		applied = true;
 
 		// 初次应用
 		applyToTree(document.body);
 
-		// 监听后续 Vue 渲染产生的节点
+		// 监听后续 Vue 渲染产生的节点。注意：mutations 必须累积处理，
+		// 否则节流期间新到的批次会被整体丢弃（弹窗字段列表渲染时丢批严重）
 		observer = new MutationObserver((mutations) => {
-			if (applyTimer) return; // 节流
+			pendingMutations.push(...mutations);
+			if (applyTimer) return;
 			applyTimer = setTimeout(() => {
 				applyTimer = null;
-				for (const m of mutations) {
+				const batch = pendingMutations;
+				pendingMutations = [];
+				for (const m of batch) {
+					if (m.type === "characterData") {
+						replaceInNode(m.target);
+					}
 					for (const added of m.addedNodes) {
 						if (added.nodeType === Node.ELEMENT_NODE) {
 							applyToTree(added);
@@ -210,10 +296,14 @@ frappe.provide("solua_home.print_designer_zh");
 						}
 					}
 				}
-			}, 50);
+			}, 80);
 		});
 
-		observer.observe(document.body, { childList: true, subtree: true });
+		observer.observe(document.body, {
+			childList: true,
+			subtree: true,
+			characterData: true,
+		});
 	};
 
 	// ============================================================
@@ -311,20 +401,16 @@ frappe.provide("solua_home.print_designer_zh");
 	};
 	ensurePatches();
 
-	// print-designer 页面加载时执行
-	const origLoad = frappe.pages["print-designer"] && frappe.pages["print-designer"].on_page_load;
-	if (origLoad) {
-		frappe.pages["print-designer"].on_page_load = function (wrapper) {
-			origLoad.call(this, wrapper);
-			// 等 Vue 应用挂载后开始监听
-			setTimeout(start, 500);
-			setTimeout(start, 2000); // 兜底再跑一次
-		};
-	} else {
-		frappe.pages["print-designer"] = frappe.pages["print-designer"] || {};
-		frappe.pages["print-designer"].on_page_load = function () {
-			setTimeout(start, 500);
-			setTimeout(start, 2000);
-		};
-	}
+	// print-designer 页面加载后启动：轮询等路由/DOM 就绪（最多 20 秒），
+	// 不再依赖 on_page_load 包装（page 对象注册时机不可靠，之前经常接不上）
+	let kickTries = 0;
+	const kick = () => {
+		if (applied) return;
+		start();
+		if (!applied && kickTries++ < 40) setTimeout(kick, 500);
+	};
+	kick();
+
+	// 拉取系统 zh 翻译字典（幂等，页面加载即触发一次）
+	loadZhDict();
 })();

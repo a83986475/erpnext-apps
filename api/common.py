@@ -63,6 +63,24 @@ def get_today_sales():
     }
 
 
+@frappe.whitelist()
+def get_zh_translations():
+    """返回合并后的简体中文翻译字典（所有 app 的 zh.csv/.po 合并）。
+
+    用途：Print Designer 界面汉化。设计器字段列表裸渲染英文 label（不走 __()），
+    且会话语言可能是 en，所以前端拉取此字典做运行时文本替换。
+    结果按 24h 缓存，避免每次请求都读 CSV。
+    """
+    cache_key = "solua_home:zh_translations"
+    translations = frappe.cache().get_value(cache_key)
+    if translations is None:
+        from frappe.translate import get_translations_from_apps
+
+        translations = get_translations_from_apps("zh")
+        frappe.cache().set_value(cache_key, translations, expires_in_sec=24 * 60 * 60)
+    return translations
+
+
 # ------------------- 工具函数 -------------------
 
 def send_wechat_notification(user, title, message):
