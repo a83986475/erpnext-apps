@@ -410,6 +410,101 @@ frappe.provide("solua_home.print_designer_zh");
 	};
 	ensureDoctypeFilter();
 
+	// ============================================================
+	// 条码预览修复：模板值先渲染再生成
+	// ============================================================
+	// 现象：设计器里条码元素的值是 Jinja 模板（如 {{ doc.custom_label_barcode }}），
+	// 弹窗/画布预览直接把模板原样发给 get_barcode → 服务端报
+	// "Invalid barcode value {{ ... }} for format ean13"。
+	//
+	// 原因：BaseBarcode.vue / AppBarcodePreviewModal.vue 只在 parseJinja=true 时
+	// 先调 render_user_text_withdoc 渲染，动态字段默认 parseJinja=false → 原值直发。
+	//
+	// 修复：拦截 frappe.call，
+	//   1) 捕获 render_user_text_withdoc 的入参（doctype/docname/send_to_jinja）到 window，
+	//      作为后续渲染模板的上下文；
+	//   2) 若 get_barcode 收到的 barcode_value 含 "{{" 模板语法，先调用
+	//      render_user_text_withdoc 渲染成真实值，再调用原 get_barcode。
+	// 不改 print_designer 源码；幂等；只在设计器页面生效（page_js 加载）。
+	const installBarcodeFixes = () => {
+		if (!frappe.call || frappe.call.__soluaAllPatched) return;
+		const outer = frappe.call;
+		frappe.call = function (method, args, opts) {
+			// 兼容两种调用方式：frappe.call("method", args, opts) / frappe.call({method, args, ...})
+			let m, a;
+			if (typeof method === "string") {
+				m = method;
+				a = args || {};
+			} else {
+				m = method && method.method;
+				a = (method && method.args) || {};
+			}
+			// 1) 上下文捕获：记住最近一次渲染用到的 doctype/docname/jinja
+			if (m && m.indexOf("render_user_text_withdoc") !== -1) {
+				if (a.doctype) window.print_designer_doctype = a.doctype;
+				if (a.docname) window.print_designer_docname = a.docname;
+				if (a.send_to_jinja) window.print_designer_jinja = a.send_to_jinja;
+			}
+			// 2) 条码模板值先渲染
+			if (
+				m &&
+				m.indexOf("get_barcode") !== -1 &&
+				a &&
+				typeof a.barcode_value === "string" &&
+				a.barcode_value.indexOf("{{") !== -1
+			) {
+				const raw = a.barcode_value;
+				const doctype = window.print_designer_doctype || "Item";
+				// 保证有可用的渲染文档：优先用已捕获的 currentDoc，否则取该单据类型最新文档
+				let renderPromise = Promise.resolve(
+					window.print_designer_docname || ""
+				);
+				if (!window.print_designer_docname) {
+					renderPromise = frappe.db
+						.get_list(doctype, {
+							fields: ["name"],
+							order_by: "modified desc",
+							limit_page_length: 1,
+						})
+						.then((rows) => (rows && rows[0] && rows[0].name) || "");
+				}
+				return renderPromise
+					.then((docname) =>
+						frappe.call({
+							method:
+								"print_designer.print_designer.page.print_designer.print_designer.render_user_text_withdoc",
+							args: {
+								string: raw,
+								doctype: doctype,
+								docname: docname || "",
+								send_to_jinja: window.print_designer_jinja || {},
+							},
+						})
+					)
+					.then((r) => {
+						const msg = r && r.message;
+						if (msg && msg.success && msg.message && msg.message !== raw) {
+							a = { ...a, barcode_value: msg.message };
+						}
+						if (typeof method === "string") {
+							return outer.call(this, m, a, opts);
+						}
+						return outer.call(this, { ...method, args: a });
+					})
+					.catch(() => {
+						// 渲染失败时退回原值（避免连环弹错）
+						if (typeof method === "string") {
+							return outer.call(this, m, a, opts);
+						}
+						return outer.call(this, method);
+					});
+			}
+			return outer.apply(this, arguments);
+		};
+		frappe.call.__soluaAllPatched = true;
+	};
+	installBarcodeFixes();
+
 	// print-designer 页面加载后启动：轮询等路由/DOM 就绪（最多 20 秒），
 	// 不再依赖 on_page_load 包装（page 对象注册时机不可靠，之前经常接不上）
 	let kickTries = 0;
