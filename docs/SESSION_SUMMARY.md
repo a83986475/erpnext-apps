@@ -228,6 +228,35 @@
 | 新建《SHD-company-deletion-record.md》 | ✅ 删除记录/顺序/备份号/回滚/上线对照清单 |
 | demo-data-cleanup-plan.md 交叉引用 | ✅ 顶部注明 SHD 已整体删除 |
 
+### 第十会话：Print Designer 汉化 + 价格标签打印（2026-08-08，本次）
+
+**一句话总结**：安装官方 Print Designer 设计器，用「运行时覆写」方案完成全界面汉化（不改源码、升级不冲突），部署 50×30mm 价格标签打印格式，修复条码渲染链路（模板值先渲染再生成），全流程验证通过（设计器→预览→PDF→headless Chrome 截图）。
+
+| 任务 | 状态 |
+|------|------|
+| **Print Designer 生产安装** | ✅ 先备份数据库 → bench get-app + install-app → 实测发票/标签/小票打印 |
+| **汉化双机制（不改 print_designer 源码）** | ✅ |
+| 方案 A：translations/zh.csv 追加 40 条 `__()` 翻译 | ✅ 实测 10/10 生效（frappe 翻译机制覆盖） |
+| 方案 B3：`public/js/print_designer_zh.js` MutationObserver 运行时覆写 | ✅ 67+ 硬编码 label 中文（编译时固化的英文翻译文件覆盖不了） |
+| 服务端白名单接口 `get_zh_translations()` | ✅ 14,279 条 zh 字典兜底（frappe.cache 24h），字段标签不限单据类型全覆盖 |
+| 修复观察器 3 个 bug（applied 置位过早/节流丢批/缺 characterData 监听） | ✅ |
+| **DocType 下拉过滤（方案 A）** | ✅ 提交 `96d8f96` |
+| 覆写 `LinkControl.set_custom_query` 合并白名单 33 个常用单据 | ✅ 服务端实测：过滤后 33 个含 Item，搜 Item 命中，Tag 被过滤（预期） |
+| **「有内容时点击弹下拉」** | ✅ 提交 `75fad0d` → 后迁移全站 `solua_home_global.js`（app_include_js，提交 `64946b7`） |
+| **设计器顶栏按钮** | ✅ 注入「新建/编辑格式」按钮（提交 `4b891a1`）+ Exit 改为回对话框（提交 `0c4940f`） |
+| **条码渲染链路修复** | ✅ 提交 `30c2a61` |
+| 根因：条码元素 value 是 Jinja 模板，弹窗/画布预览直接把模板发给 get_barcode → 报 Invalid barcode value | ✅ |
+| 修复：拦截 `frappe.call`，get_barcode 遇 `{{` 模板值先调 `render_user_text_withdoc` 渲染成真实值再生成 | ✅ 端到端实测：渲染 6901234567890 → SVG 正常，旧路径精确复现报错 |
+| ⚠️ 脚本 bug 把 print_designer_print_format 写空 | ✅ 从 Version 审计恢复 + 重新 patch（ean13 + 绑定 custom_label_barcode），打印管线恢复正常 |
+| **50×30mm 价格标签格式「价格标签 50x30 PD」** | ✅ doc_type=Item |
+| 页面尺寸 | ✅ @page 50mm×30mm（实测打印 HTML/CSS 确认） |
+| 元素 | ✅ 中文名/葡语名/型号/价格（Dynamic Text）+ 条码（Barcode 元素，ean13，绑定 custom_label_barcode） |
+| 物料条码回填 | ✅ 7 个测试物料 custom_label_barcode 全量补齐（子表条码优先/变体继承模板） |
+| ⚠️ 发现：测试条码 6901234567890 校验位错误 | 正确应为 6901234567892（python-barcode 渲染时自动重算校验位 → 库值与图像不一致，待确认修复） |
+| **标签效果验证** | ✅ 用 headless Chrome（服务器 /usr/bin/google-chrome）截图 50×30mm 标签 PNG，用户确认看到中文名/葡语名/型号/价格/条码，缩放拖拽正常 |
+| **三处代码一致** | ✅ 服务器 / 本地示例 / GitHub md5 全同，提交 `30c2a61` 已推送 |
+| **遗留待办** | ① 条码校验位修正方案 ② 物料条码自动生成器（带校验位）③ 设计器布局美化（字体/价格格式）④ 标签打印机实打测试 |
+
 ---
 
 ## 二、服务器环境信息
@@ -432,6 +461,10 @@ ps aux | grep socketio
 | 🔴 高 | **SH 真实物料 + 库存** | 当前 SH 空库，正式营业前需建真实物料档案 + 盘点入库（新增待办，pos1/pos2 上线前提） |
 | 🟡 中 | **配置快照推送到 GitHub** | config-snapshot/ 三份 JSON 建议推送到 solua-erp 仓库异地备份（新增待办） |
 | 🟡 中 | **config-snapshot 补录收银员配置** | 快照 v3 之后新增的 POS Cashier 角色权限、pos1/pos2 账号、applicable_for_users 绑定未含，建议导出 v4 |
+| 🟡 中 | **条码校验位修正** | 7 个测试物料条码 6901234567890 校验位错误（正确 6901234567892），python-barcode 渲染自动重算导致库值与图像不一致（第十会话发现） |
+| 🟡 中 | **物料条码自动生成器** | 建档时自动生成不重复合法 EAN-13（含校验位计算），此前讨论的「自动生成 13 位条码」落地（第十会话遗留） |
+| 🟢 低 | **价格标签布局美化** | 「价格标签 50x30 PD」当前为测试布局，需按实际标签打印机调整字体大小/位置/价格显示格式（第十会话遗留） |
+| 🟢 低 | **标签打印机实打测试** | 设计器预览与 PDF 已验证，待接实体打印机打样确认（第十会话遗留） |
 
 ---
 
