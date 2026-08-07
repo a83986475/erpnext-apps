@@ -271,9 +271,25 @@ frappe.provide("solua_home.print_designer_zh");
 	// 触发 on_page_show -> load_print_designer -> 自动弹出「创建或编辑打印格式」对话框。
 	// 不动 print_designer 源码；按钮只注入一次（幂等）。
 	const injectFormatButton = () => {
-		if (document.querySelector(".header .solua-format-btn")) return true;
 		const exitBtn = document.querySelector(".header .exit-btn");
 		if (!exitBtn) return false; // 顶栏尚未渲染（未打开格式时）
+
+		// 把 Exit 的默认行为（回上一页）改成回到打印格式列表/对话框。
+		// 原理：AppHeader.vue 的 .exit-btn 由 Vue 绑定了 click -> goToLastPage()。
+		// 这里追加的监听用 stopImmediatePropagation() 抢在 Vue handler 之前拦截，
+		// 改为 frappe.set_route("print-designer") —— 回到基础路由自动弹对话框。
+		// 幂等标记挂在按钮 DOM 上；若 Vue 重新渲染出新的 Exit 按钮（未带标记），
+		// 观察器再次触发时会重新绑定，保证切换格式后行为不丢。
+		if (!exitBtn.dataset.soluaExitBound) {
+			exitBtn.addEventListener("click", (e) => {
+				e.stopImmediatePropagation();
+				e.preventDefault();
+				frappe.set_route("print-designer");
+			});
+			exitBtn.dataset.soluaExitBound = "1";
+		}
+
+		if (document.querySelector(".header .solua-format-btn")) return true;
 		const btn = document.createElement("button");
 		btn.className = "btn btn-sm btn-default solua-format-btn";
 		btn.type = "button";
