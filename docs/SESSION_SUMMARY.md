@@ -257,6 +257,46 @@
 | **三处代码一致** | ✅ 服务器 / 本地示例 / GitHub md5 全同，提交 `30c2a61` 已推送 |
 | **遗留待办** | ① 条码校验位修正方案 ② 物料条码自动生成器（带校验位）③ 设计器布局美化（字体/价格格式）④ 标签打印机实打测试 |
 
+### 第十一会话：颜色池扩容 + 批量生成变体向导（2026-08-08，本次）
+
+**一句话总结**：颜色池 Cor 从 6 色扩到 16 色并解决缩写冲突（Prata 银 PR→PT），给颜色值加色卡图字段，实现「批量生成变体」服务端 API + 物料列表向导按钮（选模板→勾颜色→建变体→自动继承价格/条码/名称），端到端实测通过。
+
+| 任务 | 状态 |
+|------|------|
+| **颜色池扩容（Cor 属性 6→16 色）** | ✅ |
+| 缩写冲突修复 | ✅ Prata(银) PR→**PT**（原与 Preto(黑) PR 冲突，变体编码会撞车） |
+| 新增 10 色 | ✅ Verde 绿/Amarelo 黄/Laranja 橙/Rosa 粉/Roxo 紫/Dourado 金/Marrom 棕/Turquesa 青/Creme 奶油 + Prata 银 |
+| 幂等函数 | ✅ `add_color_pool()`（install.py，重复执行不重复插入 + 缩写唯一校验） |
+| **色卡图字段** | ✅ Item Attribute Value 新增 `swatch_image`（Attach Image）— 每色可配色卡小图，POS 颜色弹窗/设计器显示色块 |
+| **批量生成变体 API** | ✅ `bulk_create_variants()` + `get_template_attribute_values()`（api/variants.py） |
+| 自动建变体 | ✅ 命名 模板-缩写、继承模板价格（auto_create_item_price）、回填条码（validate_item 逻辑）、复制中文名/葡语名 |
+| 中文名拼接 | ✅ 「模板名·颜色中文」（如 测试窗帘 3m·白色），POS 简称=颜色名 |
+| 前端向导按钮 | ✅ `item_variant_wizard.js`（page_js 注册到 Item）：物料列表「批量生成变体」→选模板→自动列出颜色→勾选→创建 |
+| 颜色翻译 | ✅ 16 色葡→中翻译入 Translation 表 |
+| **CR-001 变体重建** | ✅ 引用检查（无库存/无单据）→ 删除重建，编码不变（CR-001-PR 仍是 Preto），价格统一 1200，条码/中文名回填 |
+| **端到端实测** | ✅ TEST-TPL-001 → 勾 Branco+Verde → 2 变体（价格 1500/条码回填/中文名「测试窗帘 3m·白色·绿色」）全对，重复运行正确跳过，测试数据已清理 |
+| **三处代码一致** | ✅ 提交 `51a2bc1` 已推送（`bdef22b..51a2bc1`），install.py / variants.py / hooks.py / wizard.js md5 全同 |
+| **遗留待办** | ① 条码校验位修正（`6901234567890` → 正确 `6901234567892`）② 建档自动生成合法 EAN-13（今天测试 `6901234567891` 已被 ERPNext 拒收 → 校验位功能已生效，生成器必须带校验位） |
+
+### 打印格式盘点（2026-08-08，上线差距评估）
+
+| 单据 | 现有格式 | 结论 |
+|------|---------|------|
+| 小票（POS Invoice） | ✅ 4 个标准（POS Invoice / Standard / with Item Image / Return） | 有默认，但需按热敏纸定制（58/80mm、Logo、NUIT、支付明细、找零） |
+| 交班（POS Opening/Closing Shift） | ⚠️ 无专门格式 | 用通用布局，建议 Print Designer 做 Z 报告 |
+| 订货（Purchase Order） | ✅ 3 个标准 | 有默认 |
+| 销售发票（Sales Invoice） | ✅ 5 个 + PD v2 | 有默认 |
+| 出库（Delivery Note） | ✅ 2 个标准 | 有默认 |
+| 入库（Purchase Receipt） | ⚠️ 仅 Serial/Batch 专用 | 普通收货单无格式，建议补 |
+| 采购发票（Purchase Invoice） | ✅ 3 个标准 | 有默认 |
+| 报价单（Quotation） | ✅ 2 个标准 | 有默认 |
+| 供应商报价（Supplier Quotation） | ⚠️ 无 | 按需 |
+| 库存调整（Stock Entry） | ⚠️ 无 | 按需 |
+| 付款（Payment Entry） | ✅ 1 个 | 有默认 |
+| PDF 生成器 | ⚠️ `wkhtmltopdf`（Print Designer 格式建议切 chromium，标签已用 chrome 验证） | 待切换 |
+| 付款方式 | ⚠️ 仅 Cash/卡/支票/电汇/Bank Draft，**无 M-Pesa/E-mola**（莫桑比克主流移动支付） | 待补 |
+| 信头 | ✅ Company Letterhead - Grey 默认 | 需填真实 NUIT/地址/电话 |
+
 ---
 
 ## 二、服务器环境信息
@@ -461,8 +501,17 @@ ps aux | grep socketio
 | 🔴 高 | **SH 真实物料 + 库存** | 当前 SH 空库，正式营业前需建真实物料档案 + 盘点入库（新增待办，pos1/pos2 上线前提） |
 | 🟡 中 | **配置快照推送到 GitHub** | config-snapshot/ 三份 JSON 建议推送到 solua-erp 仓库异地备份（新增待办） |
 | 🟡 中 | **config-snapshot 补录收银员配置** | 快照 v3 之后新增的 POS Cashier 角色权限、pos1/pos2 账号、applicable_for_users 绑定未含，建议导出 v4 |
-| 🟡 中 | **条码校验位修正** | 7 个测试物料条码 6901234567890 校验位错误（正确 6901234567892），python-barcode 渲染自动重算导致库值与图像不一致（第十会话发现） |
-| 🟡 中 | **物料条码自动生成器** | 建档时自动生成不重复合法 EAN-13（含校验位计算），此前讨论的「自动生成 13 位条码」落地（第十会话遗留） |
+| 🔴 高 | **条码校验位修正 + 自动生成器** | 测试条码 6901234567890 校验位错误（正确 6901234567892）；ERPNext 已开始校验 EAN 校验位（6901234567891 建档被拒），生成器必须带校验位（第十/十一会话遗留，影响真实物料建档） |
+| 🔴 高 | ~~颜色池扩容 + 批量生成变体向导~~ | ✅ **已完成（第十一会话）**：Cor 6→16 色、缩写去冲突、色卡图字段、bulk_create_variants API + 物料列表向导按钮 |
+| 🔴 高 | **POS 小票定制** | 58/80mm 热敏、Logo、NUIT/税务、支付明细、找零、退货小票（Print Designer） |
+| 🔴 高 | **交班 Z 报告** | POS Closing Shift 打印格式（销售额/单数/支付方式合计/退货） |
+| 🔴 高 | **付款方式补 M-Pesa/E-mola** | 莫桑比克主流移动支付，目前只有 Cash/卡/支票/电汇 |
+| 🟡 中 | **PDF 生成器切 chromium** | Print Settings pdf_generator wkhtmltopdf → chromium（Print Designer 格式渲染） |
+| 🟡 中 | **入库单 Purchase Receipt 格式** | 目前仅 Serial/Batch 专用，普通收货单补 Print Designer 格式 |
+| 🟡 中 | **信头/公司信息** | Company Letterhead 填真实 NUIT/地址/电话，发票抬头 |
+| 🟡 中 | **税模板确认** | IVA 税率与含税/不含税、小票税务信息显示 |
+| 🟡 中 | **退货流程实测** | Return 单据 + Return POS Invoice 打印 |
+| 🟢 低 | **Supplier Quotation / Stock Entry / Material Request 格式** | 按需用 Print Designer 补 |
 | 🟢 低 | **价格标签布局美化** | 「价格标签 50x30 PD」当前为测试布局，需按实际标签打印机调整字体大小/位置/价格显示格式（第十会话遗留） |
 | 🟢 低 | **标签打印机实打测试** | 设计器预览与 PDF 已验证，待接实体打印机打样确认（第十会话遗留） |
 
