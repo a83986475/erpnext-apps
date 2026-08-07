@@ -9,12 +9,38 @@ def after_install():
     add_item_attributes()
     add_variant_custom_fields()
     configure_item_variant_settings()
+    sync_standard_print_formats()
     frappe.db.commit()
 
 
 def after_migrate():
     """每次迁移后执行"""
     after_install()
+
+
+def sync_standard_print_formats():
+    """导入 app 自带的标准打印格式（价格标签等）到数据库
+
+    新版 frappe 的 migrate 只同步 app 模块目录下的 print_format，
+    app 根目录下的 print_format 需要手动导入（放这里随 migrate 自动执行）。
+    """
+    import os
+
+    from frappe.modules.import_file import import_file_by_path
+
+    base = os.path.join(os.path.dirname(__file__), "print_format")
+    if not os.path.isdir(base):
+        return
+
+    for folder in os.listdir(base):
+        json_path = os.path.join(base, folder, f"{folder}.json")
+        if not os.path.exists(json_path):
+            continue
+        try:
+            import_file_by_path(json_path, force=True, ignore_version=True)
+            frappe.db.commit()
+        except Exception as e:
+            frappe.log_error(f"打印格式导入失败 [{json_path}]: {e}", "solua_home.print_formats")
 
 
 def add_translations():

@@ -70,6 +70,14 @@ override_whitelisted_methods = {
     "erpnext.selling.page.point_of_sale.point_of_sale.get_items": "solua_home.api.pos.get_items",
 }
 
+# ------------------- Jinja 打印 helper（价格标签等） -------------------
+jinja = {
+    "methods": [
+        "solua_home.printing.label_helpers.get_barcode_img",
+        "solua_home.printing.label_helpers.get_selling_price",
+    ],
+}
+
 # ------------------- 安装/迁移 -------------------
 after_install = "solua_home.install.after_install"
 after_migrate = "solua_home.install.after_migrate"
