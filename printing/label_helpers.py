@@ -14,6 +14,23 @@ DEFAULT_PRICE_LIST = "Standard Selling"
 DEFAULT_CURRENCY = "MZN"
 
 
+def _calc_ean13_checksum(code12):
+    """EAN-13 校验位计算（前 12 位）"""
+    digits = str(code12)
+    if not digits.isdigit() or len(digits) != 12:
+        return None
+    total = sum(int(d) * (3 if i % 2 else 1) for i, d in enumerate(digits))
+    return (10 - total % 10) % 10
+
+
+def _is_valid_ean13(barcode):
+    s = str(barcode)
+    if not s.isdigit() or len(s) != 13:
+        return False
+    cs = _calc_ean13_checksum(s[:12])
+    return cs is not None and int(s[-1]) == cs
+
+
 def get_barcode_img(doc, font_size=8, module_height=8):
     """渲染物料第一个条码为 PNG data URI（可直接放进 <img>）。
 
@@ -31,12 +48,21 @@ def get_barcode_img(doc, font_size=8, module_height=8):
     except ImportError:
         return ""
 
-    # 13 位纯数字默认按 EAN-13 渲染（超市风格）；否则用 code128
+    # 渲染策略：
+    #   - barcode_type 明确声明 → 优先用声明的类型
+    #   - 13 位纯数字且校验位正确 → EAN-13（超市风格）
+    #   - 13 位纯数字但校验位错误 → 强制 code128 原样渲染！
+    #     （python-barcode 的 EAN-13 会自动重算校验位 → 图与库不一致，
+    #       收银扫码扫到图上那个码会查不到库里的码。code128 不重算，图=库）
+    #   - 其余 → code128 兜底
     candidates = []
     if barcode_type:
         candidates.append(barcode_type)
     elif len(str(barcode_value)) == 13 and str(barcode_value).isdigit():
-        candidates.append("ean13")
+        if _is_valid_ean13(barcode_value):
+            candidates.append("ean13")
+        else:
+            candidates.append("code128")
     if "code128" not in candidates:
         candidates.append("code128")
 

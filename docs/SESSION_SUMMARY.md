@@ -302,6 +302,31 @@
 | **三处代码一致** | ✅ 服务器 / 本地示例 md5 全同（api/sales.py / hooks.py / install.py） |
 | **踩坑** | ⚠️ taxes 子表 description 是 reqd=1（Sales Taxes and Charges 标准字段），测试脚本必须填，真实 POS 界面自动生成 |
 
+### 第十三会话：条码三件套（自动生成器 + 校验位修正 + 厂家错码容错）（2026-08-08，本次）
+
+**一句话总结**：一次性解决条码全链路问题——① 无条码物料建档自动生成合法 EAN-13（带校验位 + 去重）；② 修正现有测试条码 6901234567890→6901234567892（模板子表 + 6 变体镜像字段）；③ 厂家条码校验位错误时自动置空 barcode_type 跳过格式校验（防重复保留）。标签渲染层同步加固：校验位错误的 13 位数字强制 code128 原样输出（python-barcode 的 EAN-13 会自动重算校验位导致图≠库，收银扫码对不上）。
+
+| 任务 | 状态 |
+|------|------|
+| **① 自动生成器** | ✅ `generate_unique_ean13()` + `before_validate_item`（api/stock.py） |
+| 触发条件 | ✅ 非变体物料子表无任何条码时自动生成（变体走继承模板条码，不自动生成） |
+| 生成规则 | ✅ 69 开头 + 10 位随机 + EAN-13 校验位；查 Item Barcode 子表 + custom_label_barcode 去重，碰撞重试 20 次 |
+| 写入 | ✅ 自动 append 到 barcodes 子表（barcode_type=EAN）+ 镜像 custom_label_barcode + 界面提示「已自动生成：XXXX」 |
+| **② 现有条码修正** | ✅ 6901234567890 → 6901234567892（校验位错误） |
+| 修正范围 | ✅ Item Barcode 子表（CR-001）+ 6 个变体 custom_label_barcode 镜像字段，旧码残留归零 |
+| **③ 厂家错码容错** | ✅ barcode_type=EAN 且校验位错 → 自动置空 barcode_type，ERPNext 跳过格式校验（防重复检查仍在） |
+| 关键点 | ✅ 必须放 `before_validate`（在 ERPNext 自带 validate_barcode 之前跑），否则错码直接被 InvalidBarcode 拒收 |
+| ⚠️ 踩坑 | 🔴 修改 hooks.py 后必须 `bench clear-cache` 才生效（重启 web 不清 hooks 缓存）——get_hooks 验证加载 |
+| **标签渲染加固** | ✅ label_helpers.py：13 位纯数字校验位正确→ean13；校验位错误→强制 code128 原样（不重算，图=库） |
+| **测试（全部通过）** | ✅ |
+| 自动生成 | ✅ TEST-BC-AUTO-001 → 自动生成 6940504403010（13 位合法） |
+| 错码容错 | ✅ 6901234567891 (EAN) 成功建档，barcode_type 保存后为空 |
+| 防重复保留 | ✅ 重复条码 6901234567892 仍被拦「already used in Item CR-001」 |
+| 变体继承 | ✅ CR-001-BR custom_label_barcode = 6901234567892 |
+| 渲染 | ✅ 对码 ean13 PNG / 错码 code128 PNG 均生成成功 |
+| **测试数据清理** | ✅ TEST-BC-* 全部删除，数据库仅剩 CR-001 一条码（已修正） |
+| **三处代码一致** | ✅ 服务器 / 本地示例 md5 全同（api/stock.py / printing/label_helpers.py / hooks.py） |
+
 ### 打印格式盘点（2026-08-08，上线差距评估）
 
 | 单据 | 现有格式 | 结论 |
@@ -525,7 +550,7 @@ ps aux | grep socketio
 | 🔴 高 | **SH 真实物料 + 库存** | 当前 SH 空库，正式营业前需建真实物料档案 + 盘点入库（新增待办，pos1/pos2 上线前提） |
 | 🟡 中 | **配置快照推送到 GitHub** | config-snapshot/ 三份 JSON 建议推送到 solua-erp 仓库异地备份（新增待办） |
 | 🟡 中 | **config-snapshot 补录收银员配置** | 快照 v3 之后新增的 POS Cashier 角色权限、pos1/pos2 账号、applicable_for_users 绑定未含，建议导出 v4 |
-| 🔴 高 | **条码校验位修正 + 自动生成器** | 测试条码 6901234567890 校验位错误（正确 6901234567892）；ERPNext 已开始校验 EAN 校验位（6901234567891 建档被拒），生成器必须带校验位（第十/十一会话遗留，影响真实物料建档） |
+| 🔴 高 | ~~条码校验位修正 + 自动生成器~~ | ✅ **已完成（第十三会话）**：自动生成器（非变体无条码→自动生成合法 EAN-13）+ 现有条码 6901234567890→…892 修正 + 厂家错码自动容错（barcode_type 置空跳格式校验）+ 标签渲染错码强制 code128 原样 |
 | 🔴 高 | ~~颜色池扩容 + 批量生成变体向导~~ | ✅ **已完成（第十一会话）**：Cor 6→16 色、缩写去冲突、色卡图字段、bulk_create_variants API + 物料列表向导按钮 |
 | 🔴 高 | ~~折扣权限方案 C（收紧版）~~ | ✅ **已完成（第十二会话）**：allow_discount_change=1 + 行折扣保险补丁 + 审批门收紧（任何折扣 >0 都需管理员勾审批，阈值 15→0）+ A-F 测试通过 |
 | 🟢 低 | **「折扣超限已审批」字段权限** | 若需限制只有管理员能勾选该字段，可加 Role 权限（当前任何能编辑发票的用户都能勾） |

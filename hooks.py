@@ -43,6 +43,7 @@ doc_events = {
 
     # ========== 库存模块 ==========
     "Item": {
+        "before_validate": "solua_home.api.stock.before_validate_item",
         "validate": "solua_home.api.stock.validate_item",
         "after_insert": "solua_home.api.stock.auto_create_item_price",
     },

@@ -3,8 +3,88 @@
 # 库存模块的自定义验证和事件处理
 # ============================
 
+import random
+
 import frappe
 from frappe import _
+
+
+# ---------------------------------------------------------------------------
+# EAN-13 条码工具（校验位计算 + 自动生成）
+# ---------------------------------------------------------------------------
+
+def calc_ean13_checksum(code12):
+    """计算 EAN-13 校验位。code12 为前 12 位（数字字符串或 12 位数字）。"""
+    digits = str(code12)
+    if not digits.isdigit() or len(digits) != 12:
+        return None
+    total = sum(int(d) * (3 if i % 2 else 1) for i, d in enumerate(digits))
+    return (10 - total % 10) % 10
+
+
+def is_valid_ean13(barcode):
+    """校验 EAN-13 条码（13 位数字 + 校验位正确）"""
+    s = str(barcode)
+    if not s.isdigit() or len(s) != 13:
+        return False
+    cs = calc_ean13_checksum(s[:12])
+    return cs is not None and int(s[-1]) == cs
+
+
+def generate_unique_ean13():
+    """生成一个当前库里不存在的合法 EAN-13 条码。
+
+    前缀 69 开头（GS1 中国区，店内通用），其余位随机，
+    校验位按 EAN-13 规则计算，保证扫码枪可读。
+    生成后检查 Item Barcode 子表 + custom_label_barcode 去重，
+    碰撞则重试（最多 20 次）。
+    """
+    for _ in range(20):
+        code12 = "69" + "".join(str(random.randint(0, 9)) for _ in range(10))
+        cs = calc_ean13_checksum(code12)
+        barcode = code12 + str(cs)
+        # 去重检查：子表 + 镜像字段
+        exists = frappe.db.exists("Item Barcode", {"barcode": barcode})
+        if not exists:
+            exists = frappe.db.get_value("Item", {"custom_label_barcode": barcode}, "name")
+        if not exists:
+            return barcode
+    return None
+
+
+# ---------------------------------------------------------------------------
+# Item 事件
+# ---------------------------------------------------------------------------
+
+def before_validate_item(doc, method=None):
+    """物料保存前执行（必须在 ERPNext 自带校验之前）
+
+    1. 厂家条码校验位容错：barcode_type 填了 EAN 且校验位错误的条码，
+       自动把 barcode_type 置空 → ERPNext 跳过格式校验（防重复仍在），
+       否则建档会被 InvalidBarcode 拒收。
+    2. 无条码自动生成：非变体物料没有条码时，自动生成合法 EAN-13。
+    """
+    # 1. 校验位容错：EAN 类型条码校验位错误 → 清空 barcode_type
+    for row in doc.get("barcodes", []):
+        bt = (row.get("barcode_type") or "").lower()
+        bc = row.get("barcode")
+        if bc and bt in ("ean", "ean13") and not is_valid_ean13(bc):
+            row.barcode_type = ""
+            frappe.msgprint(
+                _("条码 {0} 校验位有误，已跳过 EAN 格式校验（防重复检查保留）").format(bc),
+                alert=True,
+            )
+
+    # 2. 无条码自动生成（非变体；变体走继承模板条码逻辑）
+    if not doc.variant_of and not any((r.get("barcode") or "").strip() for r in doc.get("barcodes", [])):
+        generated = generate_unique_ean13()
+        if generated:
+            doc.append("barcodes", {"barcode": generated, "barcode_type": "EAN"})
+            doc.custom_label_barcode = generated
+            frappe.msgprint(
+                _("未填写条码，已自动生成：{0}").format(generated),
+                alert=True,
+            )
 
 
 def validate_item(doc, method=None):
