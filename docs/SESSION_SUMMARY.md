@@ -278,26 +278,27 @@
 | **三处代码一致** | ✅ 提交 `51a2bc1` 已推送（`bdef22b..51a2bc1`），install.py / variants.py / hooks.py / wizard.js md5 全同 |
 | **遗留待办** | ① 条码校验位修正（`6901234567890` → 正确 `6901234567892`）② 建档自动生成合法 EAN-13（今天测试 `6901234567891` 已被 ERPNext 拒收 → 校验位功能已生效，生成器必须带校验位） |
 
-### 第十二会话：POS 折扣权限方案 C（≤15% 自由打折 + 超限审批）（2026-08-08，本次）
+### 第十二会话：POS 折扣权限方案 C（收紧版：任何折扣 >0 都需管理员审批）（2026-08-08，本次）
 
-**一句话总结**：按方案 C 落地折扣管控——打开收银员打折权限（allow_discount_change=1），实现行折扣保险（rate 自动联动折后价，修复 ERPNext 清折扣 bug），超 15% 折扣自动拦截需管理员在发票上勾选「折扣超限已审批」，全链路 A-F 测试通过。
+**一句话总结**：折扣管控最终版——打开收银员折扣输入（allow_discount_change=1），但**任何折扣（幅度 >0）都触发审批门**（阈值从 15% 收紧为 0%），收银员无审批角色（pos1/pos2 仅 Sales/Accounts User + POS Cashier），只有管理员（yangyang7920 / Administrator 持有 Sales Master Manager/Accounts Manager/System Manager）能审批。行折扣保险补丁（rate 自动联动折后价）保留，修复 ERPNext 清折扣 bug。A-F 全链路测试通过。
 
 | 任务 | 状态 |
 |------|------|
-| **决策** | ✅ 用户选方案 C：允许收银员打折，但 >15% 需管理员审批 |
+| **决策（收紧版）** | ✅ 用户要求「任何折扣都需管理员授权，收银员无自由打折权」→ 阈值 15%→0%（MAX_DISCOUNT_PERCENTAGE=0） |
 | **行折扣保险补丁** | ✅ api/sales.py（before_validate）：行有 discount_percentage 且 rate 仍是原价时 → 自动把 rate 改为折后价（修复 v16.28 `calculate_item_rate` 的 rate 优先清折扣 bug） |
-| **超限审批机制** | ✅ 折扣 >15% 时提交拦截报错「折扣 X% 超过限额 15%，需管理员在发票上勾选「折扣超限已审批」」；管理员（或勾选 custom_discount_approved=1 后）直接通过 |
+| **超限审批机制** | ✅ 任何折扣（>0%）提交时拦截报错「折扣 X% 未经审批，需管理员在发票上勾选「折扣超限已审批」后提交」；管理员（或勾选 custom_discount_approved=1 后）直接通过 |
 | **审批字段** | ✅ Sales Invoice 新增 `custom_discount_approved`（Check，install.py 创建）+ 翻译 |
 | **hooks 注册** | ✅ api/sales.py 新函数注册到 doc_events（Sales Invoice before_validate） |
 | **POS Profile 折扣权限** | ✅ 收银方式1 - SH `allow_discount_change` 0→1（收银员可见行折扣/整单折扣输入框） |
-| **测试（全部通过）** | ✅ |
-| A：pos1 行折扣 10%（≤15%）正常提交，折扣保留（net_rate=1080） | ✅ |
-| B：pos1 行折扣 20% 被拒（超限提示） | ✅ |
-| C：pos1 整单折扣 20% 被拒（超限提示） | ✅ |
-| D：管理员 20% 直接通过 | ✅ |
-| E：pos1 超限草稿 → 管理员勾审批 → pos1 提交成功（审批流闭环） | ✅ |
-| F：POS 场景（开店→POS 发票行折扣 10%→提交）折扣保留 net_rate=1080 | ✅ |
-| **测试数据清理** | ✅ 29 张测试发票全部取消+删除，库存/开店单保留 |
+| **测试（收紧版全部通过）** | ✅ |
+| A：pos1 行折扣 1%（任何>0）提交被拒 | ✅ 报「折扣 1% 未经审批…」 |
+| B：pos1 整单折扣 2% 提交被拒 | ✅ |
+| C：pos1 无折扣正常提交 | ✅ |
+| D：管理员直接打 10% 通过 | ✅ discount=10% |
+| E：pos1 草稿 5% → 管理员勾审批 → pos1 提交成功（审批流闭环） | ✅ |
+| F：POS 场景 pos1 行折扣 3% 提交被拒（POS 也无法绕过审批门） | ✅ |
+| **角色确认** | ✅ pos1/pos2 仅 Sales/Accounts User + POS Cashier（无审批角色）；审批角色仅 yangyang7920 + Administrator 持有 |
+| **测试数据清理** | ✅ 6 张测试发票全部取消+删除，库存/开店单保留 |
 | **三处代码一致** | ✅ 服务器 / 本地示例 md5 全同（api/sales.py / hooks.py / install.py） |
 | **踩坑** | ⚠️ taxes 子表 description 是 reqd=1（Sales Taxes and Charges 标准字段），测试脚本必须填，真实 POS 界面自动生成 |
 
@@ -526,8 +527,8 @@ ps aux | grep socketio
 | 🟡 中 | **config-snapshot 补录收银员配置** | 快照 v3 之后新增的 POS Cashier 角色权限、pos1/pos2 账号、applicable_for_users 绑定未含，建议导出 v4 |
 | 🔴 高 | **条码校验位修正 + 自动生成器** | 测试条码 6901234567890 校验位错误（正确 6901234567892）；ERPNext 已开始校验 EAN 校验位（6901234567891 建档被拒），生成器必须带校验位（第十/十一会话遗留，影响真实物料建档） |
 | 🔴 高 | ~~颜色池扩容 + 批量生成变体向导~~ | ✅ **已完成（第十一会话）**：Cor 6→16 色、缩写去冲突、色卡图字段、bulk_create_variants API + 物料列表向导按钮 |
-| 🔴 高 | ~~折扣权限方案 C（≤15% + 超限审批）~~ | ✅ **已完成（第十二会话）**：allow_discount_change=1 + 行折扣保险补丁 + 超限拦截（>15% 需管理员勾审批）+ A-F 测试通过 |
-| 🟢 低 | **折扣幅度审批阈值确认** | 当前写死 15%，上线前可按促销政策调整（api/sales.py 常量） |
+| 🔴 高 | ~~折扣权限方案 C（收紧版）~~ | ✅ **已完成（第十二会话）**：allow_discount_change=1 + 行折扣保险补丁 + 审批门收紧（任何折扣 >0 都需管理员勾审批，阈值 15→0）+ A-F 测试通过 |
+| 🟢 低 | **「折扣超限已审批」字段权限** | 若需限制只有管理员能勾选该字段，可加 Role 权限（当前任何能编辑发票的用户都能勾） |
 | 🔴 高 | **POS 小票定制** | 58/80mm 热敏、Logo、NUIT/税务、支付明细、找零、退货小票（Print Designer） |
 | 🔴 高 | **交班 Z 报告** | POS Closing Shift 打印格式（销售额/单数/支付方式合计/退货） |
 | 🔴 高 | **付款方式补 M-Pesa/E-mola** | 莫桑比克主流移动支付，目前只有 Cash/卡/支票/电汇 |

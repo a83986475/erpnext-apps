@@ -8,7 +8,8 @@ from frappe import _
 from frappe.utils import cint, flt
 
 # 收银员折扣限额（%）：超过此比例的折扣必须管理员审批后提交
-MAX_DISCOUNT_PERCENTAGE = 15
+# 2026-08-08 按需求收紧：任何折扣（>0）都必须管理员审批，收银员无自由打折权
+MAX_DISCOUNT_PERCENTAGE = 0
 # 有权限直接审批超限折扣的角色
 DISCOUNT_APPROVER_ROLES = {"Sales Master Manager", "Accounts Manager", "System Manager"}
 
@@ -73,22 +74,21 @@ def validate_sales_invoice(doc, method=None):
             )
         )
 
-    # 折扣超限审批：收银员折扣超过限额需管理员审批后提交
+    # 折扣审批门：任何折扣（幅度 > 限额）都需管理员审批后提交
+    # 限额=0 时即「任何折扣都需审批」，收银员无自由打折权
     max_pct = get_max_discount_percentage(doc)
     if max_pct > MAX_DISCOUNT_PERCENTAGE:
         approved = cint(doc.get("custom_discount_approved"))
         if not is_discount_approver() and not approved:
             if doc.get("_action") == "submit":
                 frappe.throw(
-                    _("折扣 {0}% 超过限额 {1}%，需管理员在发票上勾选「折扣超限已审批」后提交").format(
-                        max_pct, MAX_DISCOUNT_PERCENTAGE
+                    _("折扣 {0}% 未经审批，需管理员在发票上勾选「折扣超限已审批」后提交").format(
+                        max_pct
                     )
                 )
             else:
                 frappe.msgprint(
-                    _("折扣 {0}% 超过限额 {1}%，提交前需管理员审批").format(
-                        max_pct, MAX_DISCOUNT_PERCENTAGE
-                    )
+                    _("折扣 {0}% 未经审批，提交前需管理员审批").format(max_pct)
                 )
 
     # 示例3：检查自定义字段
