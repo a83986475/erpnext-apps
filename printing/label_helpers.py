@@ -89,10 +89,13 @@ def get_barcode_img(doc, font_size=8, module_height=8):
 
 
 def _get_barcode(doc):
-    """取物料的条码（变体无条码时继承模板条码）。
+    """取物料的标签条码。
 
-    窗帘策略：条码只挂在模板 Item 上，变体共用；
-    变体打印标签时自动取模板条码。
+    策略（2026-08-08 更新）：
+    - 物料自己有子表条码 → 用它（按声明的 barcode_type 渲染）
+    - 变体没有独立条码 → 用变体编码（如 CR-001-BR），code128 原样打印，
+      扫码直接定位到具体颜色，无需再选色
+    - 模板 / 其余 → 模板子表条码（同条码多色时扫码仍弹选色）
     """
     def _first_barcode(item):
         if getattr(item, "barcodes", None):
@@ -107,6 +110,10 @@ def _get_barcode(doc):
 
     variant_of = getattr(doc, "variant_of", None)
     if variant_of:
+        if doc.get("name"):
+            # 变体无独立条码 → 打印变体编码（Code 128，字母数字皆可）
+            return doc.name, "code128"
+        # 兜底：doc 尚无 name 时取模板条码
         try:
             tpl = frappe.get_doc("Item", variant_of)
         except frappe.DoesNotExistError:

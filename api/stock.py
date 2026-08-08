@@ -99,16 +99,13 @@ def validate_item(doc, method=None):
         frappe.throw(_("物料名称不能包含特殊字符（< > \" \' /）"))
 
     # 标签条码自动填充（Print Designer 用）
-    # 优先级：子表 barcodes 第一条 > 变体继承模板条码
-    if not doc.get("custom_label_barcode"):
-        barcode = None
-        if doc.barcodes:
-            barcode = doc.barcodes[0].get("barcode")
-        if not barcode and doc.variant_of:
-            # 变体无独立条码时继承模板条码（窗帘：同条码多色）
-            barcode = frappe.db.get_value("Item", doc.variant_of, "custom_label_barcode")
-            if not barcode:
-                barcode = frappe.db.get_value("Item Barcode", {"parent": doc.variant_of}, "barcode")
+    if doc.variant_of:
+        # 变体：优先自己的条码；无则用变体编码（标签打印 Code 128，扫码直接区分颜色）
+        barcode = doc.barcodes[0].get("barcode") if doc.barcodes else None
+        doc.custom_label_barcode = barcode or doc.name
+    elif not doc.get("custom_label_barcode"):
+        # 非变体：子表第一条条码（无条码时 before_validate 已自动生成 EAN-13）
+        barcode = doc.barcodes[0].get("barcode") if doc.barcodes else None
         if barcode:
             doc.custom_label_barcode = barcode
 

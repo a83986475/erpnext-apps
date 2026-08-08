@@ -18,6 +18,12 @@ def scan_barcode_for_pos(barcode):
         # 1. 查找条码（条码存在 Item Barcode 子表中，与 erpnext.stock.utils.scan_barcode 一致）
         item_code = frappe.db.get_value("Item Barcode", {"barcode": barcode}, "parent")
         if not item_code:
+            # 2. 兜底：条码 = 物料编码（变体标签打印的是变体编码 Code 128，
+            #    如 CR-001-BR，扫标签直接定位具体颜色）
+            item_code = frappe.db.get_value(
+                "Item", {"item_code": barcode, "disabled": 0}, "name"
+            )
+        if not item_code:
             return {"type": "not_found"}
 
         has_variants = frappe.db.get_value("Item", item_code, "has_variants")
