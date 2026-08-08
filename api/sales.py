@@ -7,11 +7,10 @@ import frappe
 from frappe import _
 from frappe.utils import cint, flt
 
-# 收银员折扣限额（%）：超过此比例的折扣必须管理员审批后提交
-# 2026-08-08 按需求收紧：任何折扣（>0）都必须管理员审批，收银员无自由打折权
-MAX_DISCOUNT_PERCENTAGE = 0
-# 有权限直接审批超限折扣的角色
-DISCOUNT_APPROVER_ROLES = {"Sales Master Manager", "Accounts Manager", "System Manager"}
+# 折扣审批改为「密码审批」（2026-08-08）：
+# 任何折扣（幅度 > 公司配置阈值，默认 0 = 任何折扣）都需在发票「审批密码」字段
+# 输入公司配置的审批密码后才能提交。密码存于 设置→公司→Solua Home, Lda，
+# 字段加密存储，界面上不可见；收银员没有自由打折权。
 
 
 def before_validate_sales_invoice(doc, method=None):
@@ -51,10 +50,25 @@ def get_max_discount_percentage(doc):
     return pct
 
 
-def is_discount_approver():
-    """当前用户是否有超限折扣审批权限"""
-    user_roles = set(frappe.get_roles(frappe.session.user))
-    return bool(user_roles & DISCOUNT_APPROVER_ROLES)
+def _try_decrypt(value):
+    """尝试解密密码字段值：已加密则解密出明文，已是明文则原样返回"""
+    if not value:
+        return ""
+    try:
+        from frappe.utils.password import decrypt
+
+        return decrypt(value)
+    except Exception:
+        return value
+
+
+def _get_discount_approval_settings(doc):
+    """读取公司折扣审批配置，返回 (总开关, 阈值%, 审批密码明文)"""
+    company = doc.get("company")
+    enabled = cint(frappe.db.get_value("Company", company, "custom_enable_discount_approval") or 0)
+    threshold = flt(frappe.db.get_value("Company", company, "custom_discount_approval_threshold") or 0)
+    pwd_hash = frappe.db.get_value("Company", company, "custom_discount_approval_password") or ""
+    return enabled, threshold, _try_decrypt(pwd_hash)
 
 
 def validate_sales_invoice(doc, method=None):
@@ -74,22 +88,32 @@ def validate_sales_invoice(doc, method=None):
             )
         )
 
-    # 折扣审批门：任何折扣（幅度 > 限额）都需管理员审批后提交
-    # 限额=0 时即「任何折扣都需审批」，收银员无自由打折权
+    # 折扣审批门（密码审批）：折扣幅度 > 阈值（默认0=任何折扣）需输入审批密码
     max_pct = get_max_discount_percentage(doc)
-    if max_pct > MAX_DISCOUNT_PERCENTAGE:
-        approved = cint(doc.get("custom_discount_approved"))
-        if not is_discount_approver() and not approved:
-            if doc.get("_action") == "submit":
-                frappe.throw(
-                    _("折扣 {0}% 未经审批，需管理员在发票上勾选「折扣超限已审批」后提交").format(
-                        max_pct
-                    )
+    enabled, threshold, approval_pwd = _get_discount_approval_settings(doc)
+    if (
+        enabled
+        and approval_pwd
+        and max_pct > threshold
+        and not cint(doc.get("custom_discount_approved"))
+    ):
+        entered = _try_decrypt(doc.get("custom_approval_password") or "")
+        if entered == approval_pwd:
+            # 密码正确 → 置审批标记并清空密码字段（标记随单据持久化）
+            doc.custom_discount_approved = 1
+            doc.custom_approval_password = ""
+        elif entered:
+            frappe.throw(_("审批密码错误，请重新输入正确的审批密码"))
+        elif doc.get("_action") == "submit":
+            frappe.throw(
+                _("折扣 {0}% 未经审批：需管理员在「审批密码」字段输入审批密码后保存，再重新提交").format(
+                    max_pct
                 )
-            else:
-                frappe.msgprint(
-                    _("折扣 {0}% 未经审批，提交前需管理员审批").format(max_pct)
-                )
+            )
+        else:
+            frappe.msgprint(
+                _("折扣 {0}% 未经审批：提交前需管理员输入审批密码").format(max_pct)
+            )
 
     # 示例3：检查自定义字段
     if doc.get("custom_approver") and not doc.get("custom_approval_date"):

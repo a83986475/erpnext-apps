@@ -346,6 +346,29 @@
 | 付款方式 | ⚠️ 仅 Cash/卡/支票/电汇/Bank Draft，**无 M-Pesa/E-mola**（莫桑比克主流移动支付） | 待补 |
 | 信头 | ✅ Company Letterhead - Grey 默认 | 需填真实 NUIT/地址/电话 |
 
+### 第十四会话：折扣审批升级为「密码审批」（2026-08-08，本次）
+
+**一句话总结**：把原来的「折扣超限已审批」勾选框 + 角色白名单审批，改为**管理员在发票上输入审批密码**才能放行——收银员即使能看到/编辑发票也没有自助放行能力（密码是唯一凭证）。
+
+| 任务 | 状态 |
+|------|------|
+| **审批密码字段** | ✅ Sales Invoice 新增 `custom_approval_password`（Password，标签「审批密码」） |
+| **勾选框降级** | ✅ `custom_discount_approved` 保留为内部标记：Property Setter 隐藏(hidden=1) + 只读(read_only=1)，界面不可见，只由代码校验密码后置位 |
+| **公司配置** | ✅ 设置→公司→Solua Home, Lda 新增：`custom_enable_discount_approval`（总开关，默认开）/ `custom_discount_approval_threshold`（阈值%，默认0=任何折扣）/ `custom_discount_approval_password`（审批密码） |
+| **审批逻辑** | ✅ api/sales.py：折扣幅度 > 阈值 且未审批时 → 密码匹配则置标记+清空密码字段；密码错误直接 throw；提交无密码 throw；保存草稿仅提示不拦截 |
+| **角色白名单移除** | ✅ 删除 `DISCOUNT_APPROVER_ROLES` / `is_discount_approver()`——人人平等，密码即授权 |
+| **兜底** | ✅ `_try_decrypt`：密码字段值已加密则解密、明文则原样（兼容两种读取时机） |
+| **初始密码** | ✅ `solua2026`（可在公司表单修改；为空=不启用审批） |
+| **测试（17/17 通过）** | ✅ T1 无折扣提交 / T2 收银员10%被拦（草稿保留） / T3 草稿可存 / T4 密码错误被拒 / T5 正确密码提交+标记置位+密码清空 / T6 两段式（收银员草稿→管理员输密码保存→收银员提交） / T7 总开关关闭放行 / T8 阈值15%放行10% / T9 POS 场景被拦 |
+| ⚠️ 踩坑 | 🔴 **密码字段掩码**：`frappe.get_doc()` 加载密码字段返回掩码占位符，直接赋值+save() 会把 `*********` 写进库！正确做法：`frappe.utils.password.encrypt(pwd)` 加密后 SQL/`db.set_value` 直写，读取用 `decrypt()` |
+| ⚠️ 测试须知 | pos1/pos2 的用户名是 `pos1@solua.one`（不是 pos1）；脚本测试必须设 `price_list_rate`，否则 ERPNext 清折扣导致门不触发 |
+| **三处代码一致** | ✅ api/sales.py / install.py 已同步（md5 同） |
+
+**实际使用流程**：
+1. 收银员 POS 打折 → 提交被拦（发票留草稿）
+2. 管理员打开草稿 → 在「审批密码」输入密码 → 保存（标记自动置位，密码清空）
+3. 收银员重新提交 → 成功
+
 ---
 
 ## 二、服务器环境信息

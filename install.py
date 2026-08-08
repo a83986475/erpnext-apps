@@ -11,6 +11,7 @@ def after_install():
     add_variant_custom_fields()
     configure_item_variant_settings()
     add_discount_approval_field()
+    add_company_discount_settings()
     sync_standard_print_formats()
     frappe.db.commit()
 
@@ -274,26 +275,115 @@ def add_custom_fields():
 
 
 def add_discount_approval_field():
-    """销售发票加「折扣超限已审批」字段（收银员超限折扣需管理员勾选后提交）"""
-    field = {
-        "dt": "Sales Invoice",
-        "fieldname": "custom_discount_approved",
-        "label": "折扣超限已审批",
-        "fieldtype": "Check",
-        "insert_after": "additional_discount_account",
-        "description": "折扣超过收银员限额时，管理员确认后勾选此项再提交",
-    }
+    """销售发票折扣审批字段：审批密码输入框 + 审批标记（隐藏，仅内部使用）
+
+    2026-08-08 升级为密码审批：管理员在「审批密码」字段输入公司配置的审批密码
+    即放行；勾选框 custom_discount_approved 降级为内部标记，由代码校验密码后置位，
+    界面上隐藏且只读（收银员无法自助勾选）。
+    """
+    fields = [
+        {
+            "dt": "Sales Invoice",
+            "fieldname": "custom_discount_approved",
+            "label": "折扣超限已审批",
+            "fieldtype": "Check",
+            "insert_after": "additional_discount_account",
+            "description": "内部审批标记：输入正确审批密码后自动置位，请勿手动勾选",
+        },
+        {
+            "dt": "Sales Invoice",
+            "fieldname": "custom_approval_password",
+            "label": "审批密码",
+            "fieldtype": "Password",
+            "insert_after": "custom_discount_approved",
+            "description": "含折扣单据提交需审批：管理员在此输入审批密码（密码在 设置→公司→Solua Home, Lda 中配置）",
+        },
+    ]
+
+    for field in fields:
+        try:
+            if not frappe.db.exists("Custom Field", {"dt": field["dt"], "fieldname": field["fieldname"]}):
+                doc = frappe.get_doc({
+                    "doctype": "Custom Field",
+                    **field,
+                    "owner": "Administrator",
+                })
+                doc.insert(ignore_permissions=True)
+        except Exception as e:
+            frappe.log_error(f"折扣审批字段创建失败 [{field.get('fieldname')}]: {e}", "solua_home.custom_fields")
+
+    # 审批标记隐藏为内部字段：界面不可见、不可勾选（只由代码置位）
     try:
-        if not frappe.db.exists("Custom Field", {"dt": "Sales Invoice", "fieldname": field["fieldname"]}):
-            doc = frappe.get_doc({
-                "doctype": "Custom Field",
-                **field,
-                "owner": "Administrator",
-            })
-            doc.insert(ignore_permissions=True)
-            frappe.db.commit()
+        frappe.make_property_setter(
+            {
+                "doctype": "Sales Invoice",
+                "doctype_or_field": "DocField",
+                "field_name": "custom_discount_approved",
+                "property": "hidden",
+                "property_type": "Check",
+                "value": 1,
+            }
+        )
+        frappe.make_property_setter(
+            {
+                "doctype": "Sales Invoice",
+                "doctype_or_field": "DocField",
+                "field_name": "custom_discount_approved",
+                "property": "read_only",
+                "property_type": "Check",
+                "value": 1,
+            }
+        )
     except Exception as e:
-        frappe.log_error(f"折扣审批字段创建失败: {e}", "solua_home.custom_fields")
+        frappe.log_error(f"折扣审批字段属性设置失败: {e}", "solua_home.custom_fields")
+
+    frappe.db.commit()
+
+
+def add_company_discount_settings():
+    """公司级折扣审批配置：总开关 / 阈值 / 审批密码（在 设置→公司→Solua Home, Lda 中修改）"""
+    fields = [
+        {
+            "dt": "Company",
+            "fieldname": "custom_enable_discount_approval",
+            "label": "启用折扣审批",
+            "fieldtype": "Check",
+            "default": "1",
+            "insert_after": "country",
+            "description": "开启后，折扣幅度超过阈值的销售发票需输入审批密码才能提交",
+        },
+        {
+            "dt": "Company",
+            "fieldname": "custom_discount_approval_threshold",
+            "label": "折扣审批阈值（%）",
+            "fieldtype": "Percent",
+            "default": "0",
+            "insert_after": "custom_enable_discount_approval",
+            "description": "折扣幅度超过此值需审批；0 = 任何折扣都需审批",
+        },
+        {
+            "dt": "Company",
+            "fieldname": "custom_discount_approval_password",
+            "label": "折扣审批密码",
+            "fieldtype": "Password",
+            "insert_after": "custom_discount_approval_threshold",
+            "description": "管理员在销售发票「审批密码」字段输入此密码后放行；为空则视为不启用审批",
+        },
+    ]
+
+    for field in fields:
+        try:
+            if not frappe.db.exists("Custom Field", {"dt": field["dt"], "fieldname": field["fieldname"]}):
+                doc = frappe.get_doc({
+                    "doctype": "Custom Field",
+                    **field,
+                    "owner": "Administrator",
+                })
+                doc.insert(ignore_permissions=True)
+        except Exception as e:
+            frappe.log_error(f"公司折扣审批字段创建失败 [{field.get('fieldname')}]: {e}", "solua_home.custom_fields")
+
+    frappe.db.commit()
 
 
 def add_item_attributes():
