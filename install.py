@@ -10,6 +10,7 @@ def after_install():
     add_color_pool()
     add_variant_custom_fields()
     configure_item_variant_settings()
+    add_discount_approval_field()
     sync_standard_print_formats()
     frappe.db.commit()
 
@@ -270,6 +271,29 @@ def add_custom_fields():
             frappe.log_error(f"自定义字段创建失败 [{field.get('fieldname')}]: {e}", "solua_home.custom_fields")
 
     frappe.db.commit()
+
+
+def add_discount_approval_field():
+    """销售发票加「折扣超限已审批」字段（收银员超限折扣需管理员勾选后提交）"""
+    field = {
+        "dt": "Sales Invoice",
+        "fieldname": "custom_discount_approved",
+        "label": "折扣超限已审批",
+        "fieldtype": "Check",
+        "insert_after": "additional_discount_account",
+        "description": "折扣超过收银员限额时，管理员确认后勾选此项再提交",
+    }
+    try:
+        if not frappe.db.exists("Custom Field", {"dt": "Sales Invoice", "fieldname": field["fieldname"]}):
+            doc = frappe.get_doc({
+                "doctype": "Custom Field",
+                **field,
+                "owner": "Administrator",
+            })
+            doc.insert(ignore_permissions=True)
+            frappe.db.commit()
+    except Exception as e:
+        frappe.log_error(f"折扣审批字段创建失败: {e}", "solua_home.custom_fields")
 
 
 def add_item_attributes():

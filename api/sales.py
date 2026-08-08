@@ -5,6 +5,55 @@
 
 import frappe
 from frappe import _
+from frappe.utils import cint, flt
+
+# 收银员折扣限额（%）：超过此比例的折扣必须管理员审批后提交
+MAX_DISCOUNT_PERCENTAGE = 15
+# 有权限直接审批超限折扣的角色
+DISCOUNT_APPROVER_ROLES = {"Sales Master Manager", "Accounts Manager", "System Manager"}
+
+
+def before_validate_sales_invoice(doc, method=None):
+    """销售发票保存前执行：行折扣保险
+
+    ERPNext v16.28 的 calculate_item_rate 以 rate 优先：
+    若行 rate（单价）不等于按 discount_percentage 算出的折后价，会清除行折扣。
+    POS 里收银员输入折扣 % 时 rate 仍是原价 → 折扣被清。
+    这里在保存前把仍为原价的 rate 同步为折后价，让折扣正确保留。
+    """
+    for item in doc.get("items", []):
+        dp = flt(item.get("discount_percentage"))
+        if dp <= 0 or item.get("is_free_item"):
+            continue
+        price_list_rate = flt(item.get("price_list_rate"))
+        rate = flt(item.get("rate"))
+        if price_list_rate and rate and abs(rate - price_list_rate) < 0.01:
+            # rate 仍是原价 → 同步为折后价（保留四位小数精度）
+            item.rate = flt(price_list_rate * (1 - dp / 100.0), item.precision("rate"))
+
+
+def get_max_discount_percentage(doc):
+    """计算单据上的最大折扣比例（整单 + 行折扣取最大值，%）"""
+    pct = 0.0
+    # 整单折扣（百分比形式）
+    if doc.get("additional_discount_percentage"):
+        pct = max(pct, flt(doc.get("additional_discount_percentage")))
+    # 整单折扣（金额形式，按净额折算）
+    if doc.get("discount_amount") and doc.get("net_total"):
+        pct = max(pct, flt(doc.discount_amount) / flt(doc.net_total) * 100)
+    # 行折扣
+    for item in doc.get("items", []):
+        if item.get("discount_percentage"):
+            pct = max(pct, flt(item.get("discount_percentage")))
+        if item.get("discount_amount") and item.get("amount"):
+            pct = max(pct, flt(item.discount_amount) / flt(item.amount) * 100)
+    return pct
+
+
+def is_discount_approver():
+    """当前用户是否有超限折扣审批权限"""
+    user_roles = set(frappe.get_roles(frappe.session.user))
+    return bool(user_roles & DISCOUNT_APPROVER_ROLES)
 
 
 def validate_sales_invoice(doc, method=None):
@@ -23,6 +72,24 @@ def validate_sales_invoice(doc, method=None):
                 doc.customer, customer_credit_limit, doc.outstanding_amount
             )
         )
+
+    # 折扣超限审批：收银员折扣超过限额需管理员审批后提交
+    max_pct = get_max_discount_percentage(doc)
+    if max_pct > MAX_DISCOUNT_PERCENTAGE:
+        approved = cint(doc.get("custom_discount_approved"))
+        if not is_discount_approver() and not approved:
+            if doc.get("_action") == "submit":
+                frappe.throw(
+                    _("折扣 {0}% 超过限额 {1}%，需管理员在发票上勾选「折扣超限已审批」后提交").format(
+                        max_pct, MAX_DISCOUNT_PERCENTAGE
+                    )
+                )
+            else:
+                frappe.msgprint(
+                    _("折扣 {0}% 超过限额 {1}%，提交前需管理员审批").format(
+                        max_pct, MAX_DISCOUNT_PERCENTAGE
+                    )
+                )
 
     # 示例3：检查自定义字段
     if doc.get("custom_approver") and not doc.get("custom_approval_date"):

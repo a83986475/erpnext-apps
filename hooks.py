@@ -14,6 +14,7 @@ app_home = "."
 doc_events = {
     # ========== 销售模块 ==========
     "Sales Invoice": {
+        "before_validate": "solua_home.api.sales.before_validate_sales_invoice",
         "validate": "solua_home.api.sales.validate_sales_invoice",
         "on_submit": "solua_home.api.sales.on_invoice_submitted",
         "on_cancel": "solua_home.api.sales.on_invoice_cancelled",
