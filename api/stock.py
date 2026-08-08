@@ -31,24 +31,21 @@ def is_valid_ean13(barcode):
     return cs is not None and int(s[-1]) == cs
 
 
-def generate_unique_ean13():
-    """生成一个当前库里不存在的合法 EAN-13 条码。
+def generate_unique_barcode():
+    """生成一个当前库里不存在的 13 位 Code 128 条码（无需校验位）。
 
-    前缀 69 开头（GS1 中国区，店内通用），其余位随机，
-    校验位按 EAN-13 规则计算，保证扫码枪可读。
-    生成后检查 Item Barcode 子表 + custom_label_barcode 去重，
-    碰撞则重试（最多 20 次）。
+    2026-08-08 简化：放弃 EAN-13 校验位，统一 Code 128 编码——
+    扫码枪两种码制都读，只要条码值不重复即可。
+    格式 69 + 11 位随机数字；去重检查 Item Barcode 子表 + custom_label_barcode，
+    碰撞重试（最多 20 次）。
     """
     for _ in range(20):
-        code12 = "69" + "".join(str(random.randint(0, 9)) for _ in range(10))
-        cs = calc_ean13_checksum(code12)
-        barcode = code12 + str(cs)
-        # 去重检查：子表 + 镜像字段
-        exists = frappe.db.exists("Item Barcode", {"barcode": barcode})
-        if not exists:
-            exists = frappe.db.get_value("Item", {"custom_label_barcode": barcode}, "name")
-        if not exists:
-            return barcode
+        barcode = "69" + "".join(str(random.randint(0, 9)) for _ in range(11))
+        if frappe.db.exists("Item Barcode", {"barcode": barcode}):
+            continue
+        if frappe.db.get_value("Item", {"custom_label_barcode": barcode}, "name"):
+            continue
+        return barcode
     return None
 
 
@@ -75,11 +72,14 @@ def before_validate_item(doc, method=None):
                 alert=True,
             )
 
-    # 2. 无条码自动生成（非变体；变体走继承模板条码逻辑）
+    # 2. 无条码自动生成（非变体；变体走标签条码=变体编码逻辑）
+    # barcode_type 留空：ERPNext 只保留选项表内的类型（无 Code128），
+    # 空类型跳过一切格式校验，只剩防重复检查——符合「只要条码不重复」策略；
+    # 标签渲染统一 Code 128，与类型无关。
     if not doc.variant_of and not any((r.get("barcode") or "").strip() for r in doc.get("barcodes", [])):
-        generated = generate_unique_ean13()
+        generated = generate_unique_barcode()
         if generated:
-            doc.append("barcodes", {"barcode": generated, "barcode_type": "EAN"})
+            doc.append("barcodes", {"barcode": generated})
             doc.custom_label_barcode = generated
             frappe.msgprint(
                 _("未填写条码，已自动生成：{0}").format(generated),

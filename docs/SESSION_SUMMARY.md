@@ -387,6 +387,26 @@
 
 **变体标签新行为**：CR-001-BR 标签印 Code 128「CR-001-BR」→ 扫码直接加入白色变体；CR-001 模板 EAN 6901234567892 不变 → 扫码仍弹选色窗。
 
+### 第十六会话：放弃 EAN-13，条码统一 Code 128（2026-08-08，本次）
+
+**一句话总结**：按「只要条码不重复就行，没必要校验位验证」的思路，正式放弃 EAN-13：自动生成器不再计算校验位，标签渲染一律 Code 128（数字/字母原样输出，图=库永不错位）。扫码枪两种码制都读，条码值才是关键。
+
+| 任务 | 状态 |
+|------|------|
+| **自动生成器**（api/stock.py） | ✅ `generate_unique_ean13` → `generate_unique_barcode`：69 + 11 位随机数字，共 13 位，**无校验位计算**；去重检查 Item Barcode 子表 + custom_label_barcode，碰撞重试 20 次 |
+| **自动建档** | ✅ 无条码非变体物料：自动生成 + 写子表（barcode_type 留空）+ 回填 custom_label_barcode + 提示 |
+| **barcode_type 留空的原因** | ✅ ERPNext 的 Item Barcode barcode_type 选项表里**没有 Code128**（只有 EAN/UPC-A/CODE-39/GTIN 等），填了也会被清空；空类型 = 跳过一切格式校验，只剩无条件防重复——正是想要的策略 |
+| **标签渲染**（label_helpers.py） | ✅ 删除 EAN-13 校验位分支，`get_barcode_img` 一律 code128 原样渲染（删掉 `_calc_ean13_checksum`/`_is_valid_ean13`） |
+| **厂家 EAN 容错保留** | ✅ before_validate_item 的容错仍生效：EAN 类型校验位错误自动清空类型（ERPNext 数据库级校验绕不过），能保存、标签 code128 渲染 |
+| **测试（7/7 通过）** | ✅ 生成器 13 位唯一 / 自动建档保存+生成 / custom_label_barcode 回填 / code128 PNG 渲染 / 重复条码拦截（already used）/ 错校验位 EAN 可保存（类型清空）/ 错码也渲染 code128 |
+| **三处代码一致** | ✅ api/stock.py / printing/label_helpers.py 已同步（md5 同） |
+
+**现在的条码体系（全链路统一 Code 128）**：
+- 新物料无条码 → 自动生成 69 开头 13 位唯一码，标签打 Code 128
+- 变体 → 标签打变体编码（CR-001-BR）Code 128，扫码直选颜色
+- 厂家条码 → 值不变，标签按 Code 128 打印（校验位错的也能用，类型留空即可）
+- 唯一硬规则：条码值不重复（ERPNext 无条件检查）
+
 ---
 
 ## 二、服务器环境信息
